@@ -1,0 +1,191 @@
+<script>
+import { SLOT_PREFERRED_POSITIONS } from '../data/roster.js'
+
+const {
+  player = null,
+  label,
+  target,
+  selectedPlayerId = null,
+  onDropPlayer = () => {},
+  onClear = () => {},
+  onPickSlot = () => {},
+  onOpenPicker = () => {},
+  compact = false,
+} = $props()
+const numberLabel = $derived(player?.number === null || player?.number === undefined ? '' : `${player.number}`)
+const positionTone = $derived(getPositionTone(player?.actual_position, target.slot))
+const surname = $derived(player ? getSurname(player.name) : '')
+const firstname = $derived(player ? getFirstNames(player.name) : '')
+const handedness = $derived(player?.handedness || '')
+const contractYear = $derived(player?.contract_year || '')
+const age = $derived(player?.birth_year ? new Date().getFullYear() - player.birth_year : null)
+const positionMismatch = $derived(compact && player && SLOT_PREFERRED_POSITIONS[target.slot] && player.actual_position !== SLOT_PREFERRED_POSITIONS[target.slot])
+
+let isOver = $state(false)
+
+function getSurname(name) {
+  const parts = (name || '').trim().split(/\s+/)
+  return parts.at(-1) || ''
+}
+
+function getFirstNames(name) {
+  const parts = (name || '').trim().split(/\s+/)
+  return parts.slice(0, -1).join(' ')
+}
+
+function getPositionTone(position, slot) {
+  if (position === 'MV' || slot === 'goalie') return 'goalie'
+  if (position === 'PV' || slot === 'ld' || slot === 'rd') return 'defender'
+  return 'forward'
+}
+
+function handleDragOver(event) {
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'move'
+  isOver = true
+}
+
+function handleDragStart(event) {
+  if (!player) return
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', player.id)
+}
+
+function handleDrop(event) {
+  event.preventDefault()
+  isOver = false
+  const playerId = event.dataTransfer.getData('text/plain')
+  if (playerId) onDropPlayer(playerId, target)
+}
+
+function handleClick() {
+  if (selectedPlayerId) onPickSlot(target)
+  else if (!player) onOpenPicker(target)
+}
+</script>
+
+{#if compact}
+  <div
+    class:is-over={isOver}
+    class:filled={player}
+    class:clickable={selectedPlayerId}
+    class:mismatch={positionMismatch}
+    class="tactic-card"
+    role="button"
+    tabindex="0"
+    draggable={!!player}
+    aria-label={player ? `${label}: ${player.name}` : `${label}: tyhjä paikka`}
+    onclick={handleClick}
+    onkeydown={(event) => {
+      if ((event.key === 'Enter' || event.key === ' ') && selectedPlayerId) {
+        event.preventDefault()
+        onPickSlot(target)
+      }
+    }}
+    ondragstart={handleDragStart}
+    ondragover={handleDragOver}
+    ondragleave={() => (isOver = false)}
+    ondrop={handleDrop}
+  >
+    {#if player}
+      <span class="tactic-card__role">{label}</span>
+      <span class="tactic-card__number">{numberLabel || '—'}</span>
+      <div class="tactic-card__name">{surname}</div>
+      <div class="tactic-card__meta">{age !== null ? `${age}v ` : ''}{handedness || '-'}</div>
+      {#if positionMismatch}
+        <span class="tactic-card__warn" title={`${player.actual_position} ei tyypillinen rooliin`}>!</span>
+      {/if}
+      <button
+        class="line-slot__clear tactic-card__clear"
+        type="button"
+        aria-label={`Poista ${player.name} paikasta ${label}`}
+        onclick={(event) => {
+          event.stopPropagation()
+          onClear(target)
+        }}
+        ondragstart={(event) => event.preventDefault()}
+      >
+        <span aria-hidden="true"></span>
+      </button>
+    {:else}
+      <div class="tactic-card__empty-graphic">
+        <svg class="jersey-silhouette jersey-silhouette--sm" viewBox="0 0 36 44" fill="none" aria-hidden="true">
+          <path d="M6 6 L12 2 L18 7 L24 2 L30 6 L32 14 L32 42 L4 42 L4 14 Z" stroke="currentColor" stroke-width="1.1"/>
+          <path d="M12 2 L18 10 L24 2" stroke="currentColor" stroke-width="1.1"/>
+          <path d="M4 14 L2 21" stroke="currentColor" stroke-width="1.1"/>
+          <path d="M32 14 L34 21" stroke="currentColor" stroke-width="1.1"/>
+          <circle cx="18" cy="26" r="3" stroke="currentColor" stroke-width="1.1"/>
+        </svg>
+        <div class="tactic-card__label">{label}</div>
+        <div class="tactic-card__empty-add">+ Lisää pelaaja</div>
+      </div>
+    {/if}
+  </div>
+{:else}
+  <div
+    class:is-over={isOver}
+    class:filled={player}
+    class:clickable={selectedPlayerId}
+    class={`line-slot ${positionTone}`}
+    role="button"
+    tabindex="0"
+    draggable={!!player}
+    aria-label={player ? `${label}: ${player.name}` : `${label}: tyhjä paikka`}
+    onclick={handleClick}
+    onkeydown={(event) => {
+      if ((event.key === 'Enter' || event.key === ' ') && selectedPlayerId) {
+        event.preventDefault()
+        onPickSlot(target)
+      }
+    }}
+    ondragstart={handleDragStart}
+    ondragover={handleDragOver}
+    ondragleave={() => (isOver = false)}
+    ondrop={handleDrop}
+  >
+    {#if player}
+      <div class="line-slot__info">
+        <div class="line-slot__header">
+          <span class="line-slot__number" data-number={numberLabel || '—'}>{numberLabel || '—'}</span>
+          <button
+            class="line-slot__clear"
+            type="button"
+            aria-label={`Poista ${player.name} paikasta ${label}`}
+            onclick={(event) => {
+              event.stopPropagation()
+              onClear(target)
+            }}
+            ondragstart={(event) => event.preventDefault()}
+          >
+            <span aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="line-slot__bio">
+          <div class="line-slot__surname">{surname}</div>
+          <div class="line-slot__details">
+            {#if firstname}
+              <span>{firstname}</span>
+            {/if}
+            {#if age !== null}
+              <span>{age}v</span>
+            {/if}
+            <span>{handedness || '-'}</span>
+            <span>{contractYear}</span>
+          </div>
+        </div>
+      </div>
+    {:else}
+      <div class="line-slot__empty-graphic">
+        <svg class="jersey-silhouette" viewBox="0 0 36 44" fill="none" aria-hidden="true">
+          <path d="M6 6 L12 2 L18 7 L24 2 L30 6 L32 14 L32 42 L4 42 L4 14 Z" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M12 2 L18 10 L24 2" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M4 14 L2 21" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M32 14 L34 21" stroke="currentColor" stroke-width="1.2"/>
+          <circle cx="18" cy="26" r="3" stroke="currentColor" stroke-width="1.2"/>
+        </svg>
+        <div class="line-slot__empty-label">{label}</div>
+        <div class="line-slot__empty-add">+ Lisää pelaaja</div>
+      </div>
+    {/if}
+  </div>
+{/if}
