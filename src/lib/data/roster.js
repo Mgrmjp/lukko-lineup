@@ -13,11 +13,11 @@ export const SLOT_LABELS = {
   goalie: 'MV',
   extraForward: '13. hyökkääjä',
   extraDefense: '7. puolustaja',
-  ppLd: 'YV point',
-  ppLeft: 'Vasen kaista',
-  ppCenter: 'Bumper',
-  ppRight: 'Oikea kaista',
-  ppRd: 'Maalinedusta',
+  ppLd: 'YLÄ',
+  ppLeft: 'VASEN',
+  ppCenter: 'BUMPER',
+  ppRight: 'OIKEA',
+  ppRd: 'MAALIN ED.',
   pkF1: 'AV H1',
   pkF2: 'AV H2',
   pkD1: 'AV P1',
@@ -544,6 +544,16 @@ export function getAvailablePlayers(players, roster, position = null) {
   const assigned = getAssignedPlayerIds(roster)
   return players.filter((player) => {
     if (assigned.has(player.id)) return false
+    if (player.status !== 'aktiivinen' || !hasContractYear(player)) return false
+    if (!position) return true
+    return player.actual_position === position
+  })
+}
+
+export function getActiveLineupPlayers(players, roster, position = null) {
+  const activeIds = getActiveLineupPlayerIds(roster)
+  return players.filter((player) => {
+    if (!activeIds.has(player.id)) return false
     if (player.status !== 'aktiivinen' || !hasContractYear(player)) return false
     if (!position) return true
     return player.actual_position === position

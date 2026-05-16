@@ -11,6 +11,7 @@ const {
   onClear = () => {},
   onPickSlot = () => {},
   onOpenPicker = () => {},
+  onClearAll = () => {},
 } = $props()
 
 function player(playerId) {
@@ -113,13 +114,13 @@ function player(playerId) {
   <section class="line-section lineup-panel special-section">
     <div class="line-section__header">
       <h2>Ylivoima</h2>
+      <button type="button" class="line-section__clear-all" onclick={() => onClearAll('powerplay')}>Tyhjennä</button>
     </div>
     <div class="special-units">
       {#each roster.powerplay as unit, index}
         <article class="special-unit" aria-label={`Ylivoimayksikkö ${unit.unit}`}>
           <div class="special-unit__title">
-            <strong>YV {unit.unit}</strong>
-            <span>1-3-1</span>
+            <strong>YV {unit.unit} · 1-3-1</strong>
           </div>
           <div class="special-ice special-ice--powerplay">
             <svg class="pp-connections" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -135,13 +136,13 @@ function player(playerId) {
               <LineSlot label={SLOT_LABELS.ppLeft} player={player(unit.ppLeft)} target={{ kind: 'powerplay', index, slot: 'ppLeft' }} {selectedPlayerId} {onDropPlayer} {onClear} {onPickSlot} {onOpenPicker} compact />
             </div>
             <div class="special-slot special-slot--pp-center">
-              <LineSlot label={SLOT_LABELS.ppCenter} player={player(unit.ppCenter)} target={{ kind: 'powerplay', index, slot: 'ppCenter' }} {selectedPlayerId} {onDropPlayer} {onClear} {onPickSlot} {onOpenPicker} compact />
+              <LineSlot label={SLOT_LABELS.ppCenter} player={player(unit.ppCenter)} target={{ kind: 'powerplay', index, slot: 'ppCenter' }} {selectedPlayerId} {onDropPlayer} {onClear} {onPickSlot} {onOpenPicker} compact isKey />
             </div>
             <div class="special-slot special-slot--pp-right">
               <LineSlot label={SLOT_LABELS.ppRight} player={player(unit.ppRight)} target={{ kind: 'powerplay', index, slot: 'ppRight' }} {selectedPlayerId} {onDropPlayer} {onClear} {onPickSlot} {onOpenPicker} compact />
             </div>
             <div class="special-slot special-slot--pp-ld">
-              <LineSlot label={SLOT_LABELS.ppLd} player={player(unit.ppLd)} target={{ kind: 'powerplay', index, slot: 'ppLd' }} {selectedPlayerId} {onDropPlayer} {onClear} {onPickSlot} {onOpenPicker} compact />
+              <LineSlot label={SLOT_LABELS.ppLd} player={player(unit.ppLd)} target={{ kind: 'powerplay', index, slot: 'ppLd' }} {selectedPlayerId} {onDropPlayer} {onClear} {onPickSlot} {onOpenPicker} compact isKey />
             </div>
             <div class="special-slot special-slot--pp-rd">
               <LineSlot label={SLOT_LABELS.ppRd} player={player(unit.ppRd)} target={{ kind: 'powerplay', index, slot: 'ppRd' }} {selectedPlayerId} {onDropPlayer} {onClear} {onPickSlot} {onOpenPicker} compact />
@@ -155,13 +156,13 @@ function player(playerId) {
   <section class="line-section lineup-panel special-section">
     <div class="line-section__header">
       <h2>Alivoima</h2>
+      <button type="button" class="line-section__clear-all" onclick={() => onClearAll('shorthanded')}>Tyhjennä</button>
     </div>
     <div class="special-units">
       {#each roster.shorthanded as unit, index}
         <article class="special-unit" aria-label={`Alivoimayksikkö ${unit.unit}`}>
           <div class="special-unit__title">
-            <strong>AV {unit.unit}</strong>
-            <span>Neliö</span>
+            <strong>AV {unit.unit} · Neliö</strong>
           </div>
           <div class="special-ice special-ice--shorthanded">
             <svg class="pk-connections" viewBox="0 0 100 100" preserveAspectRatio="none">

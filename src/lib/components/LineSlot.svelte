@@ -11,6 +11,7 @@ const {
   onPickSlot = () => {},
   onOpenPicker = () => {},
   compact = false,
+  isKey = false,
 } = $props()
 const numberLabel = $derived(player?.number === null || player?.number === undefined ? '' : `${player.number}`)
 const positionTone = $derived(getPositionTone(player?.actual_position, target.slot))
@@ -65,61 +66,62 @@ function handleClick() {
 </script>
 
 {#if compact}
-  <div
-    class:is-over={isOver}
-    class:filled={player}
-    class:clickable={selectedPlayerId}
-    class:mismatch={positionMismatch}
-    class="tactic-card"
-    role="button"
-    tabindex="0"
-    draggable={!!player}
-    aria-label={player ? `${label}: ${player.name}` : `${label}: tyhjä paikka`}
-    onclick={handleClick}
-    onkeydown={(event) => {
-      if ((event.key === 'Enter' || event.key === ' ') && selectedPlayerId) {
-        event.preventDefault()
-        onPickSlot(target)
-      }
-    }}
-    ondragstart={handleDragStart}
-    ondragover={handleDragOver}
-    ondragleave={() => (isOver = false)}
-    ondrop={handleDrop}
-  >
-    {#if player}
-      <span class="tactic-card__role">{label}</span>
-      <span class="tactic-card__number">{numberLabel || '—'}</span>
-      <div class="tactic-card__name">{surname}</div>
-      <div class="tactic-card__meta">{age !== null ? `${age}v ` : ''}{handedness || '-'}</div>
-      {#if positionMismatch}
-        <span class="tactic-card__warn" title={`${player.actual_position} ei tyypillinen rooliin`}>!</span>
+  <div class="tactic-card-wrapper">
+    <div class="tactic-card__position-label">{label}</div>
+    <div
+      class:is-over={isOver}
+      class:filled={player}
+      class:clickable={selectedPlayerId}
+      class:mismatch={positionMismatch}
+      class:is-key={isKey && player}
+      class="tactic-card"
+      role="button"
+      tabindex="0"
+      draggable={!!player}
+      aria-label={player ? `${label}: ${player.name}` : `${label}: tyhjä paikka`}
+      onclick={handleClick}
+      onkeydown={(event) => {
+        if ((event.key === 'Enter' || event.key === ' ') && selectedPlayerId) {
+          event.preventDefault()
+          onPickSlot(target)
+        }
+      }}
+      ondragstart={handleDragStart}
+      ondragover={handleDragOver}
+      ondragleave={() => (isOver = false)}
+      ondrop={handleDrop}
+    >
+      {#if player}
+        {#if numberLabel}
+          <span class="tactic-card__number">{numberLabel}</span>
+        {/if}
+        <div class="tactic-card__name">{surname}</div>
+        <div class="tactic-card__meta">{age !== null ? `${age}v ` : ''}{handedness || '-'}</div>
+        <button
+          class="line-slot__clear tactic-card__clear"
+          type="button"
+          aria-label={`Poista ${player.name} paikasta ${label}`}
+          onclick={(event) => {
+            event.stopPropagation()
+            onClear(target)
+          }}
+          ondragstart={(event) => event.preventDefault()}
+        >
+          <span aria-hidden="true"></span>
+        </button>
+      {:else}
+        <div class="tactic-card__empty-graphic">
+          <svg class="jersey-silhouette jersey-silhouette--sm" viewBox="0 0 36 44" fill="none" aria-hidden="true">
+            <path d="M6 6 L12 2 L18 7 L24 2 L30 6 L32 14 L32 42 L4 42 L4 14 Z" stroke="currentColor" stroke-width="1.1"/>
+            <path d="M12 2 L18 10 L24 2" stroke="currentColor" stroke-width="1.1"/>
+            <path d="M4 14 L2 21" stroke="currentColor" stroke-width="1.1"/>
+            <path d="M32 14 L34 21" stroke="currentColor" stroke-width="1.1"/>
+            <circle cx="18" cy="26" r="3" stroke="currentColor" stroke-width="1.1"/>
+          </svg>
+          <div class="tactic-card__empty-add">+ Lisää pelaaja</div>
+        </div>
       {/if}
-      <button
-        class="line-slot__clear tactic-card__clear"
-        type="button"
-        aria-label={`Poista ${player.name} paikasta ${label}`}
-        onclick={(event) => {
-          event.stopPropagation()
-          onClear(target)
-        }}
-        ondragstart={(event) => event.preventDefault()}
-      >
-        <span aria-hidden="true"></span>
-      </button>
-    {:else}
-      <div class="tactic-card__empty-graphic">
-        <svg class="jersey-silhouette jersey-silhouette--sm" viewBox="0 0 36 44" fill="none" aria-hidden="true">
-          <path d="M6 6 L12 2 L18 7 L24 2 L30 6 L32 14 L32 42 L4 42 L4 14 Z" stroke="currentColor" stroke-width="1.1"/>
-          <path d="M12 2 L18 10 L24 2" stroke="currentColor" stroke-width="1.1"/>
-          <path d="M4 14 L2 21" stroke="currentColor" stroke-width="1.1"/>
-          <path d="M32 14 L34 21" stroke="currentColor" stroke-width="1.1"/>
-          <circle cx="18" cy="26" r="3" stroke="currentColor" stroke-width="1.1"/>
-        </svg>
-        <div class="tactic-card__label">{label}</div>
-        <div class="tactic-card__empty-add">+ Lisää pelaaja</div>
-      </div>
-    {/if}
+    </div>
   </div>
 {:else}
   <div

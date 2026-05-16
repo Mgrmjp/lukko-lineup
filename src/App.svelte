@@ -12,6 +12,7 @@ import {
   createEmptyRoster,
   decodeRoster,
   encodeRoster,
+  getActiveLineupPlayers,
   getAssignedPlayerIds,
   getAvailablePlayers,
   hydrateRoster,
@@ -66,6 +67,12 @@ let pickerTarget = $state(null)
 const assignedIds = $derived(getAssignedPlayerIds(roster))
 const summary = $derived(summarizeRoster(players, roster))
 const availablePlayers = $derived(getAvailablePlayers(players, roster))
+const activeLineupPlayers = $derived(getActiveLineupPlayers(players, roster))
+const pickerPlayers = $derived(
+  pickerTarget?.kind === 'powerplay' || pickerTarget?.kind === 'shorthanded'
+    ? activeLineupPlayers
+    : availablePlayers
+)
 
 $effect(() => {
   document.body.style.overflow = pickerTarget ? 'hidden' : ''
@@ -86,8 +93,16 @@ $effect(() => {
 
 function handleAssign(playerId, target) {
   if (target.kind === 'powerplay' || target.kind === 'shorthanded') {
-    const result = assignPlayerToSlot(roster, players, playerId, target)
-    notice = result.reason
+    const existingPlayerId = getPlayerInSlot(roster, target)
+    if (existingPlayerId && existingPlayerId !== playerId) {
+      const oldSlot = findPlayerSlot(roster, playerId)
+      setSlotValue(roster, target, playerId)
+      if (oldSlot) setSlotValue(roster, oldSlot, existingPlayerId)
+      notice = ''
+    } else {
+      const result = assignPlayerToSlot(roster, players, playerId, target)
+      notice = result.reason
+    }
     selectedPlayerId = null
     return
   }
@@ -142,6 +157,16 @@ function findPlayerSlot(roster, playerId) {
   for (let i = 0; i < roster.goalies.length; i++) {
     if (roster.goalies[i] === playerId) return { kind: 'goalie', index: i, slot: 'goalie' }
   }
+  for (let i = 0; i < roster.powerplay.length; i++) {
+    for (const slot of ['ppLeft', 'ppCenter', 'ppRight', 'ppLd', 'ppRd']) {
+      if (roster.powerplay[i][slot] === playerId) return { kind: 'powerplay', index: i, slot }
+    }
+  }
+  for (let i = 0; i < roster.shorthanded.length; i++) {
+    for (const slot of ['pkF1', 'pkF2', 'pkD1', 'pkD2']) {
+      if (roster.shorthanded[i][slot] === playerId) return { kind: 'shorthanded', index: i, slot }
+    }
+  }
   return null
 }
 
@@ -151,6 +176,8 @@ function setSlotValue(roster, target, playerId) {
   else if (target.kind === 'extraForward') roster.extras.forward = playerId
   else if (target.kind === 'extraDefense') roster.extras.defense = playerId
   else if (target.kind === 'goalie') roster.goalies[target.index] = playerId
+  else if (target.kind === 'powerplay') roster.powerplay[target.index][target.slot] = playerId
+  else if (target.kind === 'shorthanded') roster.shorthanded[target.index][target.slot] = playerId
 }
 
 function handlePickSlot(target) {
@@ -159,7 +186,21 @@ function handlePickSlot(target) {
 }
 
 function handleClear(target) {
+  if (target.kind === 'powerplay' || target.kind === 'shorthanded') {
+    roster[target.kind][target.index][target.slot] = null
+    notice = ''
+    return
+  }
   clearSlot(roster, target)
+  notice = ''
+}
+
+function handleClearAll(kind) {
+  for (const unit of roster[kind]) {
+    for (const slot of Object.keys(unit)) {
+      if (typeof unit[slot] === 'string') unit[slot] = null
+    }
+  }
   notice = ''
 }
 
@@ -324,13 +365,14 @@ async function copyShareUrl() {
         onClear={handleClear}
         onPickSlot={handlePickSlot}
         onOpenPicker={openPicker}
+        onClearAll={handleClearAll}
       />
     </section>
   </main>
 
   {#if pickerTarget}
     <PickerModal
-      availablePlayers={availablePlayers}
+      availablePlayers={pickerPlayers}
       target={pickerTarget}
       onSelect={handlePickerSelect}
       onClose={closePicker}
