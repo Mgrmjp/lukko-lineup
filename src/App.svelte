@@ -8,6 +8,7 @@ import lukkoLogo from './assets/lukkoyellow.svg'
 import {
   applyDefaultsToEmptySpecialTeams,
   assignPlayerToSlot,
+  canAssignPlayerToSlot,
   clearSlot,
   createDefaultRoster,
   createEmptyRoster,
@@ -17,6 +18,7 @@ import {
   getActiveLineupPlayerIds,
   getAssignedPlayerIds,
   getAvailablePlayers,
+  getPlayerById,
   hydrateRoster,
   getLukkoPlayers,
   removePlayerFromSpecialTeams,
@@ -61,19 +63,42 @@ const helpNote = 'Huomioithan, että ketjukemia ja erikoistilanneroolit voivat m
 
 let roster = $state(createDefaultRoster(players))
 let selectedPlayerId = $state(null)
-let notice = $state('')
-let toast = $state({ message: '', type: 'error' })
-
-function showToast(message, type = 'error') {
-  toast = { message, type }
-}
-
-function dismissToast() {
-  toast = { message: '', type: 'error' }
-}
 let helpOpen = $state(false)
 let viewMode = $state(localStorage.getItem('lukko-view-mode') || 'evenStrength')
 let pickerTarget = $state(null)
+let positionFilter = $state('all')
+
+const POSITIONS = [
+  { key: 'all', label: 'Kaikki' },
+  { key: 'LH', label: 'LH' },
+  { key: 'KH', label: 'KH' },
+  { key: 'PV', label: 'PV' },
+  { key: 'MV', label: 'MV' },
+]
+
+function filterPlayers(list) {
+  if (positionFilter === 'all') return list
+  return list.filter((p) => p.actual_position === positionFilter)
+}
+
+let toasts = $state([])
+let toastId = 0
+
+function addToast(message, type = 'error') {
+  const id = ++toastId
+  toasts = [...toasts, { id, message, type, exiting: false }]
+  setTimeout(() => dismissToast(id), 3500)
+}
+
+function dismissToast(id) {
+  const toast = toasts.find((t) => t.id === id)
+  if (!toast || toast.exiting) return
+  toast.exiting = true
+  toasts = [...toasts]
+  setTimeout(() => {
+    toasts = toasts.filter((t) => t.id !== id)
+  }, 200)
+}
 
 const assignedIds = $derived(getAssignedPlayerIds(roster))
 const lineupIds = $derived(getActiveLineupPlayerIds(roster))
@@ -130,20 +155,15 @@ function handleAssign(playerId, target) {
     const existingPlayerId = getPlayerInSlot(roster, target)
     if (existingPlayerId && existingPlayerId !== playerId) {
       if (!isPlayerInMainLineup(roster, playerId)) {
-        // Player not in lineup — reject
         const player = getPlayerById(players, playerId)
-        notice = player ? `Sijoita ${player.name} ensin kokoonpanoon ennen erikoistilanneroolia.` : ''
-        if (player) showToast(`Sijoita ${player.name} ensin kokoonpanoon ennen erikoistilanneroolia.`, 'error')
+        if (player) addToast(`Sijoita ${player.name} ensin kokoonpanoon ennen erikoistilanneroolia.`, 'error')
         selectedPlayerId = null
         return
       }
-      // Player from main lineup — replace, displaced player drops from special team
       setSlotValue(roster, target, playerId)
-      notice = ''
     } else if (!existingPlayerId) {
       const result = assignPlayerToSlot(roster, players, playerId, target)
-      notice = result.reason
-      if (result.reason) showToast(result.reason, 'error')
+      if (result.reason) addToast(result.reason, result.ok ? 'warning' : 'error')
     }
     selectedPlayerId = null
     return
@@ -153,18 +173,33 @@ function handleAssign(playerId, target) {
   if (existingPlayerId && existingPlayerId !== playerId) {
     const oldSlot = findPlayerSlot(roster, playerId)
     if (oldSlot) {
+      const playerA = getPlayerById(players, playerId)
+      const playerB = getPlayerById(players, existingPlayerId)
+      const checkA = canAssignPlayerToSlot(playerA, target.slot)
+      const checkB = canAssignPlayerToSlot(playerB, oldSlot.slot)
+      if (!checkA.ok || !checkB.ok) {
+        const reason = !checkA.ok ? checkA.reason : checkB.reason
+        addToast(reason, 'error')
+        selectedPlayerId = null
+        return
+      }
       clearSlot(roster, { kind: oldSlot.kind, index: oldSlot.index, slot: oldSlot.slot })
       setSlotValue(roster, target, playerId)
       setSlotValue(roster, oldSlot, existingPlayerId)
     } else {
+      const player = getPlayerById(players, playerId)
+      const check = canAssignPlayerToSlot(player, target.slot)
+      if (!check.ok) {
+        addToast(check.reason, 'error')
+        selectedPlayerId = null
+        return
+      }
       setSlotValue(roster, target, playerId)
       removePlayerFromSpecialTeams(roster, existingPlayerId)
     }
-    notice = ''
   } else {
     const result = assignPlayerToSlot(roster, players, playerId, target)
-    notice = result.reason
-    if (result.reason) showToast(result.reason, 'error')
+    if (result.reason) addToast(result.reason, result.ok ? 'warning' : 'error')
   }
   selectedPlayerId = null
 }
@@ -180,10 +215,19 @@ function getPlayerInSlot(roster, target) {
   return null
 }
 
-function swapPlayers(roster, idA, idB) {
+function swapPlayers(roster, players, idA, idB) {
   const slotA = findPlayerSlot(roster, idA)
   const slotB = findPlayerSlot(roster, idB)
   if (!slotA || !slotB) return
+  const playerA = getPlayerById(players, idA)
+  const playerB = getPlayerById(players, idB)
+  const checkA = canAssignPlayerToSlot(playerA, slotB.slot)
+  const checkB = canAssignPlayerToSlot(playerB, slotA.slot)
+  if (!checkA.ok || !checkB.ok) {
+    const reason = !checkA.ok ? checkA.reason : checkB.reason
+    addToast(reason, 'error')
+    return
+  }
   setSlotValue(roster, slotA, idB)
   setSlotValue(roster, slotB, idA)
 }
@@ -241,11 +285,9 @@ function handlePickSlot(target) {
 function handleClear(target) {
   if (target.kind === 'powerplay' || target.kind === 'shorthanded') {
     roster[target.kind][target.index][target.slot] = null
-    notice = ''
     return
   }
   clearSlot(roster, target)
-  notice = ''
 }
 
 function handleClearAll(kind) {
@@ -254,7 +296,6 @@ function handleClearAll(kind) {
       if (typeof unit[slot] === 'string') unit[slot] = null
     }
   }
-  notice = ''
 }
 
 function openPicker(target) {
@@ -276,20 +317,18 @@ function handlePickerSelect(playerId) {
 function resetRoster() {
   roster = createDefaultRoster(players)
   selectedPlayerId = null
-  notice = ''
 }
 
 function clearRoster() {
   roster = createEmptyRoster()
   selectedPlayerId = null
-  notice = ''
 }
 
 async function copyShareUrl() {
   const url = new URL(window.location.href)
   url.searchParams.set('roster', encodeRoster(roster))
   await navigator.clipboard?.writeText(url.toString())
-  notice = 'Jakolinkki kopioitu leikepöydälle.'
+  addToast('Jakolinkki kopioitu leikepöydälle.', 'success')
 }
 </script>
 
@@ -315,41 +354,49 @@ async function copyShareUrl() {
 
   <main class="layout">
     <aside class="roster-pool" aria-label="Rosteripooli">
+      <div class="pool-filters" role="group" aria-label="Suodata position mukaan">
+        {#each POSITIONS as pos}
+          <button
+            class:active={positionFilter === pos.key}
+            type="button"
+            onclick={() => positionFilter = pos.key}
+          >{pos.label}</button>
+        {/each}
+      </div>
+
       <section class="pool-section">
         <div class="pool-section__header">
           <h2>Kokoonpanossa</h2>
-          <span>{lineupIds.size}</span>
+          <span>{filterPlayers(players.filter((player) => lineupIds.has(player.id))).length}</span>
         </div>
         <div class="pool-section__cards">
-          {#each players.filter((player) => lineupIds.has(player.id)) as player}
+          {#each filterPlayers(players.filter((player) => lineupIds.has(player.id))) as player}
             <RosterPlayerCard
               {player}
               assigned
               selected={selectedPlayerId === player.id}
               onSelect={(playerId) => {
                 selectedPlayerId = selectedPlayerId === playerId ? null : playerId
-                notice = selectedPlayerId ? 'Valitse uusi paikka kokoonpanosta.' : ''
               }}
             />
           {/each}
         </div>
       </section>
 
-      {#if players.filter((player) => assignedIds.has(player.id) && !lineupIds.has(player.id)).length > 0}
+      {#if filterPlayers(players.filter((player) => assignedIds.has(player.id) && !lineupIds.has(player.id))).length > 0}
       <section class="pool-section">
         <div class="pool-section__header">
           <h2>Sivussa</h2>
-          <span>{assignedIds.size - lineupIds.size}</span>
+          <span>{filterPlayers(players.filter((player) => assignedIds.has(player.id) && !lineupIds.has(player.id))).length}</span>
         </div>
         <div class="pool-section__cards">
-          {#each players.filter((player) => assignedIds.has(player.id) && !lineupIds.has(player.id)) as player}
+          {#each filterPlayers(players.filter((player) => assignedIds.has(player.id) && !lineupIds.has(player.id))) as player}
             <RosterPlayerCard
               {player}
               assigned
               selected={selectedPlayerId === player.id}
               onSelect={(playerId) => {
                 selectedPlayerId = selectedPlayerId === playerId ? null : playerId
-                notice = selectedPlayerId ? 'Valitse uusi paikka kokoonpanosta.' : ''
               }}
             />
           {/each}
@@ -402,9 +449,6 @@ async function copyShareUrl() {
       <div class="workspace-toolbar">
         <div>
           <h2>Kokoonpano · {summary.lineupCount} / {summary.limit} sijoitettuna · {summary.free} vapaata</h2>
-          {#if notice}
-            <p class:notice-ok={notice.includes('kopioitu')} class:notice-warn={notice.includes('yleensä')} class="workspace-toolbar__notice">{notice}</p>
-          {/if}
         </div>
         <div class="view-toggle" aria-label="Valitse näkymä">
           <button class:active={viewMode === 'evenStrength'} type="button" onclick={() => viewMode = 'evenStrength'}>Tasavoima</button>
@@ -437,4 +481,4 @@ async function copyShareUrl() {
 
 </div>
 
-<Toast message={toast.message} type={toast.type} onDismiss={dismissToast} />
+<Toast {toasts} onDismiss={dismissToast} />

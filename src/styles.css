@@ -163,6 +163,36 @@ body::before {
     repeating-linear-gradient(90deg, rgba(116, 166, 223, 0.035) 0 1px, transparent 1px 72px);
 }
 
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, .03);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 199, 44, .25);
+  border-radius: 3px;
+  transition: background 120ms ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 199, 44, .45);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 199, 44, .25) rgba(255, 255, 255, .03);
+}
+
 button { font: inherit; }
 
 .app-shell {
@@ -243,7 +273,7 @@ button { font: inherit; }
   border-radius: var(--radius-md);
   background: var(--bg-surface);
   color: var(--text-secondary);
-  font-family: var(--font-ui);
+  font-family: var(--font-body);
   font-size: 14px;
   font-weight: 600;
   padding: 0 var(--space-1_5);
@@ -285,6 +315,43 @@ button { font: inherit; }
   align-content: start;
   gap: var(--space-1_5);
   background: transparent;
+}
+
+.pool-filters {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.pool-filters button {
+  flex: 1;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.pool-filters button:hover {
+  background: rgba(255, 255, 255, .05);
+  color: var(--text-primary);
+}
+
+.pool-filters button.active {
+  background: rgba(255, 199, 44, .12);
+  border-color: rgba(255, 199, 44, .3);
+  color: var(--accent);
 }
 
 .pool-section {
@@ -375,8 +442,8 @@ button { font: inherit; }
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  min-height: 44px;
-  padding: 0 16px;
+  min-height: 56px;
+  padding: 0 24px;
   background: rgba(16, 23, 34, 0.92);
   backdrop-filter: blur(12px);
   border: 1px solid var(--border-default);
@@ -394,46 +461,44 @@ button { font: inherit; }
   text-transform: uppercase;
 }
 
-.workspace-toolbar__notice {
-  margin: 2px 0 0;
-  color: var(--accent);
-  font-family: var(--font-ui);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.workspace-toolbar__notice.notice-ok {
-  color: var(--green-ok);
-}
-
-.workspace-toolbar__notice.notice-warn {
-  color: var(--accent);
-}
-
 .view-toggle {
   display: flex;
-  gap: 4px;
+  gap: 0;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 
 .view-toggle button {
-  min-height: 30px;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-md);
+  min-height: 36px;
+  padding: 0 18px;
+  border: none;
+  border-right: 1px solid var(--border-soft);
   background: transparent;
   color: var(--text-secondary);
-  font-family: var(--font-ui);
-  font-size: 14px;
-  font-weight: 600;
-  padding: 0 var(--space-1);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   cursor: pointer;
   transition: all 120ms ease;
 }
 
-.view-toggle button.active {
+.view-toggle button:last-child {
+  border-right: none;
+}
+
+.view-toggle button:hover {
+  background: rgba(255, 255, 255, .05);
   color: var(--text-primary);
-  background: var(--bg-elevated);
-  border-color: var(--border-default);
-  box-shadow: var(--shadow-sm);
+}
+
+.view-toggle button.active {
+  color: #0a0e14;
+  background: linear-gradient(180deg, #ffd100, #e6b800);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3);
 }
 .summary {
   display: block;
@@ -1197,7 +1262,7 @@ button { font: inherit; }
   display: block;
   color: #ffd21a;
   font-family: var(--font-body);
-  font-size: 36px;
+  font-size: 22px;
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0;
@@ -1300,15 +1365,13 @@ button { font: inherit; }
 }
 
 .pp-connections line {
-  stroke: rgba(245, 200, 60, .5);
-  stroke-width: 1.2;
-  stroke-dasharray: 8 6;
+  stroke: rgba(245, 200, 60, .25);
+  stroke-width: 1;
 }
 
 .pk-connections line {
-  stroke: rgba(199, 84, 101, .4);
-  stroke-width: 1.2;
-  stroke-dasharray: 8 6;
+  stroke: rgba(199, 84, 101, .2);
+  stroke-width: 1;
 }
 
 
@@ -1757,7 +1820,7 @@ button { font: inherit; }
   }
 
   .tactic-card__number {
-    font-size: 26px;
+    font-size: 18px;
     -webkit-text-stroke: 0.8px #3a2400;
   }
 

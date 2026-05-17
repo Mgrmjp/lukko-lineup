@@ -105,21 +105,21 @@ export const DEFAULT_ROSTER_IDS = {
       ppLeft: 'lukko-alex-beaucage',
       ppCenter: 'lukko-mikael-ruohomaa',
       ppRight: 'lukko-aleksi-saarela',
-      ppLd: 'lukko-peetro-seppala',
+      ppLd: 'lukko-jakob-stenqvist',
       ppRd: 'lukko-antti-saarela',
     },
     {
       ppLeft: 'lukko-jami-krannila',
       ppCenter: 'lukko-santeri-virtanen',
       ppRight: 'lukko-felix-robert',
-      ppLd: 'lukko-jakob-stenqvist',
+      ppLd: 'lukko-peetro-seppala',
       ppRd: 'lukko-heikki-liedes',
     },
   ],
   shorthanded: [
     {
       pkF1: 'lukko-mikael-ruohomaa',
-      pkF2: 'lukko-heikki-liedes',
+      pkF2: 'lukko-topias-haapanen',
       pkD1: 'lukko-chris-harpur',
       pkD2: 'lukko-nuutti-viitasalo',
     },
@@ -341,7 +341,7 @@ export function canAssignPlayerToSlot(player, slot) {
   if (!allowed.includes(player.actual_position)) {
     return {
       ok: false,
-      reason: `${player.name} (${player.actual_position}) ei sovi paikkaan ${SLOT_LABELS[slot] || slot}.`,
+      reason: `${player.name} (${player.actual_position}) ei kuulu paikkaan ${SLOT_LABELS[slot] || slot}.`,
     }
   }
 
