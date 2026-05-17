@@ -14,7 +14,6 @@ import {
   decodeRoster,
   encodeRoster,
   getActiveLineupPlayers,
-  getActiveLineupPlayerIds,
   getAssignedPlayerIds,
   getAvailablePlayers,
   hydrateRoster,
@@ -106,28 +105,38 @@ $effect(() => {
   localStorage.setItem('lukko-view-mode', viewMode)
 })
 
+function isPlayerInMainLineup(roster, playerId) {
+  for (const line of roster.forwards) {
+    for (const slot of ['lw', 'c', 'rw']) {
+      if (line[slot] === playerId) return true
+    }
+  }
+  for (const pair of roster.defense) {
+    for (const slot of ['ld', 'rd']) {
+      if (pair[slot] === playerId) return true
+    }
+  }
+  if (roster.extras?.forward === playerId || roster.extras?.defense === playerId) return true
+  for (const goalieId of roster.goalies) {
+    if (goalieId === playerId) return true
+  }
+  return false
+}
+
 function handleAssign(playerId, target) {
   if (target.kind === 'powerplay' || target.kind === 'shorthanded') {
     const existingPlayerId = getPlayerInSlot(roster, target)
     if (existingPlayerId && existingPlayerId !== playerId) {
-      const oldSpecialSlot = findPlayerSpecialSlot(roster, playerId, target.kind)
-      if (!oldSpecialSlot && !getActiveLineupPlayerIds(roster).has(playerId)) {
-        // Player not in lineup or special teams — reject
+      if (!isPlayerInMainLineup(roster, playerId)) {
+        // Player not in lineup — reject
         const player = getPlayerById(players, playerId)
         notice = player ? `Sijoita ${player.name} ensin kokoonpanoon ennen erikoistilanneroolia.` : ''
         if (player) showToast(`Sijoita ${player.name} ensin kokoonpanoon ennen erikoistilanneroolia.`, 'error')
         selectedPlayerId = null
         return
       }
-      if (oldSpecialSlot) {
-        // Swap within same special team type
-        roster[target.kind][oldSpecialSlot.index][oldSpecialSlot.slot] = null
-        setSlotValue(roster, target, playerId)
-        setSlotValue(roster, oldSpecialSlot, existingPlayerId)
-      } else {
-        // Player from main lineup — replace, displaced player drops from special team
-        setSlotValue(roster, target, playerId)
-      }
+      // Player from main lineup — replace, displaced player drops from special team
+      setSlotValue(roster, target, playerId)
       notice = ''
     } else if (!existingPlayerId) {
       const result = assignPlayerToSlot(roster, players, playerId, target)
@@ -201,23 +210,6 @@ function findPlayerSlot(roster, playerId) {
   for (let i = 0; i < roster.shorthanded.length; i++) {
     for (const slot of ['pkF1', 'pkF2', 'pkD1', 'pkD2']) {
       if (roster.shorthanded[i][slot] === playerId) return { kind: 'shorthanded', index: i, slot }
-    }
-  }
-  return null
-}
-
-function findPlayerSpecialSlot(roster, playerId, kind) {
-  if (kind === 'powerplay') {
-    for (let i = 0; i < roster.powerplay.length; i++) {
-      for (const slot of ['ppLeft', 'ppCenter', 'ppRight', 'ppLd', 'ppRd']) {
-        if (roster.powerplay[i][slot] === playerId) return { kind: 'powerplay', index: i, slot }
-      }
-    }
-  } else if (kind === 'shorthanded') {
-    for (let i = 0; i < roster.shorthanded.length; i++) {
-      for (const slot of ['pkF1', 'pkF2', 'pkD1', 'pkD2']) {
-        if (roster.shorthanded[i][slot] === playerId) return { kind: 'shorthanded', index: i, slot }
-      }
     }
   }
   return null
