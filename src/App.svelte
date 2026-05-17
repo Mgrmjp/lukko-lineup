@@ -13,6 +13,7 @@ import {
   decodeRoster,
   encodeRoster,
   getActiveLineupPlayers,
+  getActiveLineupPlayerIds,
   getAssignedPlayerIds,
   getAvailablePlayers,
   hydrateRoster,
@@ -61,7 +62,7 @@ let roster = $state(createDefaultRoster(players))
 let selectedPlayerId = $state(null)
 let notice = $state('')
 let helpOpen = $state(false)
-let viewMode = $state('evenStrength')
+let viewMode = $state(localStorage.getItem('lukko-view-mode') || 'evenStrength')
 let pickerTarget = $state(null)
 
 const assignedIds = $derived(getAssignedPlayerIds(roster))
@@ -91,15 +92,33 @@ $effect(() => {
   localStorage.setItem('lukko-line-builder', JSON.stringify(roster))
 })
 
+$effect(() => {
+  localStorage.setItem('lukko-view-mode', viewMode)
+})
+
 function handleAssign(playerId, target) {
   if (target.kind === 'powerplay' || target.kind === 'shorthanded') {
     const existingPlayerId = getPlayerInSlot(roster, target)
     if (existingPlayerId && existingPlayerId !== playerId) {
-      const oldSlot = findPlayerSlot(roster, playerId)
-      setSlotValue(roster, target, playerId)
-      if (oldSlot) setSlotValue(roster, oldSlot, existingPlayerId)
+      const oldSpecialSlot = findPlayerSpecialSlot(roster, playerId, target.kind)
+      if (!oldSpecialSlot && !getActiveLineupPlayerIds(roster).has(playerId)) {
+        // Player not in lineup or special teams — reject
+        const player = getPlayerById(players, playerId)
+        notice = player ? `Sijoita ${player.name} ensin kokoonpanoon ennen erikoistilanneroolia.` : ''
+        selectedPlayerId = null
+        return
+      }
+      if (oldSpecialSlot) {
+        // Swap within same special team type
+        roster[target.kind][oldSpecialSlot.index][oldSpecialSlot.slot] = null
+        setSlotValue(roster, target, playerId)
+        setSlotValue(roster, oldSpecialSlot, existingPlayerId)
+      } else {
+        // Player from main lineup — replace, displaced player drops from special team
+        setSlotValue(roster, target, playerId)
+      }
       notice = ''
-    } else {
+    } else if (!existingPlayerId) {
       const result = assignPlayerToSlot(roster, players, playerId, target)
       notice = result.reason
     }
@@ -109,11 +128,15 @@ function handleAssign(playerId, target) {
 
   const existingPlayerId = getPlayerInSlot(roster, target)
   if (existingPlayerId && existingPlayerId !== playerId) {
-    clearSlot(roster, target)
     const oldSlot = findPlayerSlot(roster, playerId)
-    if (oldSlot) setSlotValue(roster, oldSlot, existingPlayerId)
-    setSlotValue(roster, target, playerId)
-    if (!oldSlot) removePlayerFromSpecialTeams(roster, existingPlayerId)
+    if (oldSlot) {
+      clearSlot(roster, { kind: oldSlot.kind, index: oldSlot.index, slot: oldSlot.slot })
+      setSlotValue(roster, target, playerId)
+      setSlotValue(roster, oldSlot, existingPlayerId)
+    } else {
+      setSlotValue(roster, target, playerId)
+      removePlayerFromSpecialTeams(roster, existingPlayerId)
+    }
     notice = ''
   } else {
     const result = assignPlayerToSlot(roster, players, playerId, target)
@@ -170,11 +193,34 @@ function findPlayerSlot(roster, playerId) {
   return null
 }
 
+function findPlayerSpecialSlot(roster, playerId, kind) {
+  if (kind === 'powerplay') {
+    for (let i = 0; i < roster.powerplay.length; i++) {
+      for (const slot of ['ppLeft', 'ppCenter', 'ppRight', 'ppLd', 'ppRd']) {
+        if (roster.powerplay[i][slot] === playerId) return { kind: 'powerplay', index: i, slot }
+      }
+    }
+  } else if (kind === 'shorthanded') {
+    for (let i = 0; i < roster.shorthanded.length; i++) {
+      for (const slot of ['pkF1', 'pkF2', 'pkD1', 'pkD2']) {
+        if (roster.shorthanded[i][slot] === playerId) return { kind: 'shorthanded', index: i, slot }
+      }
+    }
+  }
+  return null
+}
+
 function setSlotValue(roster, target, playerId) {
   if (target.kind === 'forward') roster.forwards[target.index][target.slot] = playerId
   else if (target.kind === 'defense') roster.defense[target.index][target.slot] = playerId
-  else if (target.kind === 'extraForward') roster.extras.forward = playerId
-  else if (target.kind === 'extraDefense') roster.extras.defense = playerId
+  else if (target.kind === 'extraForward') {
+    roster.extras.forward = playerId
+    roster.extras.defense = null
+  }
+  else if (target.kind === 'extraDefense') {
+    roster.extras.defense = playerId
+    roster.extras.forward = null
+  }
   else if (target.kind === 'goalie') roster.goalies[target.index] = playerId
   else if (target.kind === 'powerplay') roster.powerplay[target.index][target.slot] = playerId
   else if (target.kind === 'shorthanded') roster.shorthanded[target.index][target.slot] = playerId
@@ -254,7 +300,7 @@ async function copyShareUrl() {
       <p class="app-kicker">Äijänsuo · Rauma · Kokoonpanotyökalu</p>
     </div>
     <div class="hero__actions" aria-label="Kokoonpanon toiminnot">
-      <button type="button" onclick={resetRoster}>Palauta</button>
+      <button type="button" onclick={resetRoster}>Palauta oletukset</button>
       <button type="button" onclick={clearRoster}>Tyhjennä</button>
       <button type="button" class="primary" onclick={copyShareUrl}>Jaa</button>
     </div>

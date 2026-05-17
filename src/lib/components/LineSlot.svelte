@@ -1,5 +1,4 @@
 <script>
-import { SLOT_PREFERRED_POSITIONS } from '../data/roster.js'
 
 const {
   player = null,
@@ -20,9 +19,11 @@ const firstname = $derived(player ? getFirstNames(player.name) : '')
 const handedness = $derived(player?.handedness || '')
 const contractYear = $derived(player?.contract_year || '')
 const age = $derived(player?.birth_year ? new Date().getFullYear() - player.birth_year : null)
-const positionMismatch = $derived(compact && player && SLOT_PREFERRED_POSITIONS[target.slot] && player.actual_position !== SLOT_PREFERRED_POSITIONS[target.slot])
+const DEFENSE_SLOTS = new Set(['ppLd', 'pkD1', 'pkD2'])
+const positionMismatch = $derived(compact && player?.actual_position === 'PV' && !DEFENSE_SLOTS.has(target.slot))
 
-let isOver = $state(false)
+let dragCounter = $state(0)
+const isOver = $derived(dragCounter > 0)
 
 function getSurname(name) {
   const parts = (name || '').trim().split(/\s+/)
@@ -40,10 +41,18 @@ function getPositionTone(position, slot) {
   return 'forward'
 }
 
+function handleDragEnter(event) {
+  event.preventDefault()
+  dragCounter++
+}
+
+function handleDragLeave(event) {
+  dragCounter--
+}
+
 function handleDragOver(event) {
   event.preventDefault()
   event.dataTransfer.dropEffect = 'move'
-  isOver = true
 }
 
 function handleDragStart(event) {
@@ -52,9 +61,13 @@ function handleDragStart(event) {
   event.dataTransfer.setData('text/plain', player.id)
 }
 
+function handleDragEnd() {
+  dragCounter = 0
+}
+
 function handleDrop(event) {
   event.preventDefault()
-  isOver = false
+  dragCounter = 0
   const playerId = event.dataTransfer.getData('text/plain')
   if (playerId) onDropPlayer(playerId, target)
 }
@@ -66,8 +79,7 @@ function handleClick() {
 </script>
 
 {#if compact}
-  <div class="tactic-card-wrapper">
-    <div class="tactic-card__position-label">{label}</div>
+  <div class="tactic-card-wrapper" class:mismatch={positionMismatch}>
     <div
       class:is-over={isOver}
       class:filled={player}
@@ -87,20 +99,24 @@ function handleClick() {
         }
       }}
       ondragstart={handleDragStart}
+      ondragend={handleDragEnd}
+      ondragenter={handleDragEnter}
       ondragover={handleDragOver}
-      ondragleave={() => (isOver = false)}
+      ondragleave={handleDragLeave}
       ondrop={handleDrop}
     >
+      <div class="tactic-card__position-label">{label}</div>
       {#if player}
         {#if numberLabel}
           <span class="tactic-card__number">{numberLabel}</span>
         {/if}
         <div class="tactic-card__name">{surname}</div>
-        <div class="tactic-card__meta">{age !== null ? `${age}v ` : ''}{handedness || '-'}</div>
+        <div class="tactic-card__meta">{age !== null ? `${age}v` : ''}{age !== null && handedness ? ' · ' : ''}{handedness || ''}</div>
         <button
           class="line-slot__clear tactic-card__clear"
           type="button"
           aria-label={`Poista ${player.name} paikasta ${label}`}
+          onmousedown={(event) => event.stopPropagation()}
           onclick={(event) => {
             event.stopPropagation()
             onClear(target)
@@ -141,8 +157,10 @@ function handleClick() {
       }
     }}
     ondragstart={handleDragStart}
+    ondragend={handleDragEnd}
+    ondragenter={handleDragEnter}
     ondragover={handleDragOver}
-    ondragleave={() => (isOver = false)}
+    ondragleave={handleDragLeave}
     ondrop={handleDrop}
   >
     {#if player}
@@ -153,6 +171,7 @@ function handleClick() {
             class="line-slot__clear"
             type="button"
             aria-label={`Poista ${player.name} paikasta ${label}`}
+            onmousedown={(event) => event.stopPropagation()}
             onclick={(event) => {
               event.stopPropagation()
               onClear(target)

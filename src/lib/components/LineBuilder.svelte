@@ -124,13 +124,11 @@ function player(playerId) {
           </div>
           <div class="special-ice special-ice--powerplay">
             <svg class="pp-connections" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <line x1="50" y1="20" x2="22" y2="38" />
-              <line x1="50" y1="20" x2="78" y2="38" />
-              <line x1="22" y1="40" x2="50" y2="48" />
-              <line x1="78" y1="40" x2="50" y2="48" />
-              <line x1="50" y1="50" x2="50" y2="72" />
-              <line x1="22" y1="42" x2="50" y2="72" />
-              <line x1="78" y1="42" x2="50" y2="72" />
+              <line x1="50" y1="19" x2="22" y2="47" />
+              <line x1="50" y1="19" x2="78" y2="47" />
+              <line x1="22" y1="47" x2="50" y2="71" />
+              <line x1="78" y1="47" x2="50" y2="71" />
+              <line x1="50" y1="71" x2="50" y2="90" />
             </svg>
             <div class="special-slot special-slot--pp-left">
               <LineSlot label={SLOT_LABELS.ppLeft} player={player(unit.ppLeft)} target={{ kind: 'powerplay', index, slot: 'ppLeft' }} {selectedPlayerId} {onDropPlayer} {onClear} {onPickSlot} {onOpenPicker} compact />
@@ -166,10 +164,10 @@ function player(playerId) {
           </div>
           <div class="special-ice special-ice--shorthanded">
             <svg class="pk-connections" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <line x1="24" y1="24" x2="76" y2="24" />
-              <line x1="24" y1="68" x2="76" y2="68" />
-              <line x1="24" y1="24" x2="24" y2="68" />
-              <line x1="76" y1="24" x2="76" y2="68" />
+              <line x1="24" y1="22" x2="76" y2="22" />
+              <line x1="24" y1="62" x2="76" y2="62" />
+              <line x1="24" y1="22" x2="24" y2="62" />
+              <line x1="76" y1="22" x2="76" y2="62" />
             </svg>
             <div class="special-slot special-slot--pk-f1">
               <LineSlot label={SLOT_LABELS.pkF1} player={player(unit.pkF1)} target={{ kind: 'shorthanded', index, slot: 'pkF1' }} {selectedPlayerId} {onDropPlayer} {onClear} {onPickSlot} {onOpenPicker} compact />

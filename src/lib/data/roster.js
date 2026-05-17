@@ -13,15 +13,15 @@ export const SLOT_LABELS = {
   goalie: 'MV',
   extraForward: '13. hyökkääjä',
   extraDefense: '7. puolustaja',
-  ppLd: 'YLÄ',
-  ppLeft: 'VASEN',
-  ppCenter: 'BUMPER',
-  ppRight: 'OIKEA',
-  ppRd: 'MAALIN ED.',
-  pkF1: 'AV H1',
-  pkF2: 'AV H2',
-  pkD1: 'AV P1',
-  pkD2: 'AV P2',
+  ppLd: 'KÄRKI',
+  ppLeft: 'VL',
+  ppCenter: 'SLOTTI',
+  ppRight: 'OL',
+  ppRd: 'MAALINEDUSTA',
+  pkF1: 'YLÄ-H1',
+  pkF2: 'YLÄ-H2',
+  pkD1: 'ALA-P1',
+  pkD2: 'ALA-P2',
   scratch: 'Extra',
 }
 
@@ -73,12 +73,12 @@ export const DEFAULT_ROSTER_IDS = {
     {
       lw: 'lukko-antti-saarela',
       c: 'lukko-jami-krannila',
-      rw: 'lukko-lenni-hamalainen',
+      rw: 'lukko-topias-haapanen',
     },
     {
       lw: 'lukko-henri-ikonen',
       c: 'lukko-aapo-vanninen',
-      rw: 'lukko-topias-haapanen',
+      rw: 'lukko-lenni-hamalainen',
     },
   ],
   defense: [
@@ -98,7 +98,7 @@ export const DEFAULT_ROSTER_IDS = {
   goalies: ['lukko-antti-raanta', 'lukko-daniel-salonen'],
   extras: {
     forward: 'lukko-jasu-mensonen',
-    defense: 'lukko-jakub-floris',
+    defense: null,
   },
   powerplay: [
     {
@@ -562,22 +562,14 @@ export function getActiveLineupPlayers(players, roster, position = null) {
 
 export function summarizeRoster(players, roster, limit = ROSTER_LIMIT) {
   const assigned = getAssignedPlayerIds(roster)
-  const activeRosterIds = new Set()
+  const lineupCount = assigned.size - (roster.scratches?.length || 0)
 
-  for (const playerId of assigned) {
-    const player = getPlayerById(players, playerId)
-    if (player?.status === 'aktiivinen' && hasContractYear(player)) {
-      activeRosterIds.add(playerId)
-    }
-  }
-
-  const filled = activeRosterIds.size
   return {
-    filled,
+    filled: lineupCount,
     limit,
-    free: Math.max(limit - filled, 0),
-    over: Math.max(filled - limit, 0),
-    lineupCount: assigned.size,
+    free: Math.max(limit - lineupCount, 0),
+    over: Math.max(lineupCount - limit, 0),
+    lineupCount,
   }
 }
 
