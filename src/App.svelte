@@ -357,7 +357,7 @@ async function copyShareUrl() {
       {#if players.filter((player) => assignedIds.has(player.id) && !lineupIds.has(player.id)).length > 0}
       <section class="pool-section">
         <div class="pool-section__header">
-          <h2>Vaihto/Naarmut</h2>
+          <h2>Sivussa</h2>
           <span>{assignedIds.size - lineupIds.size}</span>
         </div>
         <div class="pool-section__cards">
