@@ -430,5 +430,6 @@ async function copyShareUrl() {
     />
   {/if}
 
-  <Toast message={toast.message} type={toast.type} onDismiss={dismissToast} />
 </div>
+
+<Toast message={toast.message} type={toast.type} onDismiss={dismissToast} />
