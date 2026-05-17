@@ -317,25 +317,6 @@ async function copyShareUrl() {
     <aside class="roster-pool" aria-label="Rosteripooli">
       <section class="pool-section">
         <div class="pool-section__header">
-          <h2>Vapaat pelaajat</h2>
-          <span>{availablePlayers.length}</span>
-        </div>
-        <div class="pool-section__cards">
-          {#each availablePlayers as player}
-            <RosterPlayerCard
-              {player}
-              selected={selectedPlayerId === player.id}
-              onSelect={(playerId) => {
-                selectedPlayerId = selectedPlayerId === playerId ? null : playerId
-                notice = selectedPlayerId ? 'Valitse paikka kokoonpanosta.' : ''
-              }}
-            />
-          {/each}
-        </div>
-      </section>
-
-      <section class="pool-section">
-        <div class="pool-section__header">
           <h2>Kokoonpanossa</h2>
           <span>{lineupIds.size}</span>
         </div>
