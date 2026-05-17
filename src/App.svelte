@@ -294,7 +294,7 @@ async function copyShareUrl() {
 </script>
 
 <svelte:head>
-  <title>Rauman Lukko ketjut ja kokoonpanotyökalu</title>
+  <title>Rauman Lukko · Ketjut ja kokoonpanotyökalu</title>
 </svelte:head>
 
 <div class="app-shell">
