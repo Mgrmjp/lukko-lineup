@@ -14,6 +14,7 @@ import {
   decodeRoster,
   encodeRoster,
   getActiveLineupPlayers,
+  getActiveLineupPlayerIds,
   getAssignedPlayerIds,
   getAvailablePlayers,
   hydrateRoster,
@@ -75,6 +76,7 @@ let viewMode = $state(localStorage.getItem('lukko-view-mode') || 'evenStrength')
 let pickerTarget = $state(null)
 
 const assignedIds = $derived(getAssignedPlayerIds(roster))
+const lineupIds = $derived(getActiveLineupPlayerIds(roster))
 const summary = $derived(summarizeRoster(players, roster))
 const availablePlayers = $derived(getAvailablePlayers(players, roster))
 const activeLineupPlayers = $derived(getActiveLineupPlayers(players, roster))
@@ -335,10 +337,10 @@ async function copyShareUrl() {
       <section class="pool-section">
         <div class="pool-section__header">
           <h2>Kokoonpanossa</h2>
-          <span>{assignedIds.size}</span>
+          <span>{lineupIds.size}</span>
         </div>
         <div class="pool-section__cards">
-          {#each players.filter((player) => assignedIds.has(player.id)) as player}
+          {#each players.filter((player) => lineupIds.has(player.id)) as player}
             <RosterPlayerCard
               {player}
               assigned
@@ -351,6 +353,28 @@ async function copyShareUrl() {
           {/each}
         </div>
       </section>
+
+      {#if players.filter((player) => assignedIds.has(player.id) && !lineupIds.has(player.id)).length > 0}
+      <section class="pool-section">
+        <div class="pool-section__header">
+          <h2>Vaihto/Naarmut</h2>
+          <span>{assignedIds.size - lineupIds.size}</span>
+        </div>
+        <div class="pool-section__cards">
+          {#each players.filter((player) => assignedIds.has(player.id) && !lineupIds.has(player.id)) as player}
+            <RosterPlayerCard
+              {player}
+              assigned
+              selected={selectedPlayerId === player.id}
+              onSelect={(playerId) => {
+                selectedPlayerId = selectedPlayerId === playerId ? null : playerId
+                notice = selectedPlayerId ? 'Valitse uusi paikka kokoonpanosta.' : ''
+              }}
+            />
+          {/each}
+        </div>
+      </section>
+      {/if}
 
       <section class="legend-panel" aria-label="Position värit">
         <div class="legend-panel__item">
