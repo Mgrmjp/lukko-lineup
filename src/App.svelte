@@ -3,6 +3,7 @@ import { untrack } from 'svelte'
 import LineBuilder from './lib/components/LineBuilder.svelte'
 import PickerModal from './lib/components/PickerModal.svelte'
 import RosterPlayerCard from './lib/components/RosterPlayerCard.svelte'
+import Toast from './lib/components/Toast.svelte'
 import lukkoLogo from './assets/lukkoyellow.svg'
 import {
   applyDefaultsToEmptySpecialTeams,
@@ -61,6 +62,15 @@ const helpNote = 'Huomioithan, että ketjukemia ja erikoistilanneroolit voivat m
 let roster = $state(createDefaultRoster(players))
 let selectedPlayerId = $state(null)
 let notice = $state('')
+let toast = $state({ message: '', type: 'error' })
+
+function showToast(message, type = 'error') {
+  toast = { message, type }
+}
+
+function dismissToast() {
+  toast = { message: '', type: 'error' }
+}
 let helpOpen = $state(false)
 let viewMode = $state(localStorage.getItem('lukko-view-mode') || 'evenStrength')
 let pickerTarget = $state(null)
@@ -105,6 +115,7 @@ function handleAssign(playerId, target) {
         // Player not in lineup or special teams — reject
         const player = getPlayerById(players, playerId)
         notice = player ? `Sijoita ${player.name} ensin kokoonpanoon ennen erikoistilanneroolia.` : ''
+        if (player) showToast(`Sijoita ${player.name} ensin kokoonpanoon ennen erikoistilanneroolia.`, 'error')
         selectedPlayerId = null
         return
       }
@@ -121,6 +132,7 @@ function handleAssign(playerId, target) {
     } else if (!existingPlayerId) {
       const result = assignPlayerToSlot(roster, players, playerId, target)
       notice = result.reason
+      if (result.reason) showToast(result.reason, 'error')
     }
     selectedPlayerId = null
     return
@@ -141,6 +153,7 @@ function handleAssign(playerId, target) {
   } else {
     const result = assignPlayerToSlot(roster, players, playerId, target)
     notice = result.reason
+    if (result.reason) showToast(result.reason, 'error')
   }
   selectedPlayerId = null
 }
@@ -424,4 +437,6 @@ async function copyShareUrl() {
       onClose={closePicker}
     />
   {/if}
+
+  <Toast message={toast.message} type={toast.type} onDismiss={dismissToast} />
 </div>
