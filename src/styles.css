@@ -608,15 +608,15 @@ button { font: inherit; }
 }
 
 .legend-dot.forward {
-  background: var(--blue-primary);
+  background: #22c55e;
 }
 
 .legend-dot.defender {
-  background: var(--red-primary);
+  background: #ef4444;
 }
 
 .legend-dot.goalie {
-  background: var(--accent);
+  background: #eab308;
 }
 
 .roster-card {
@@ -679,16 +679,16 @@ button { font: inherit; }
 }
 
 .position-mv {
-  background: var(--accent);
+  background: #eab308;
 }
 
 .position-pv {
-  background: var(--red-primary);
+  background: #ef4444;
 }
 
 .position-kh,
 .position-lh {
-  background: var(--blue-primary);
+  background: #22c55e;
 }
 
 .roster-card__main {
