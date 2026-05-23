@@ -494,6 +494,19 @@ async function copyShareUrl() {
     </section>
   </main>
 
+  <footer class="site-footer" aria-label="Sivuston tiedot">
+    <p class="site-footer__credit">
+      Sivun tekijä:
+      <a
+        class="site-footer__link"
+        href="https://www.linkedin.com/in/miikkamgr/"
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Sivun tekijä Miikka LinkedInissä"
+      >Miikka</a>
+    </p>
+  </footer>
+
   {#if pickerTarget}
     <PickerModal
       availablePlayers={pickerPlayers}

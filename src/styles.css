@@ -434,6 +434,33 @@ button { font: inherit; }
   align-content: start;
 }
 
+.site-footer {
+  max-width: 88rem;
+  margin: 0 auto;
+  padding: 0 22px 28px;
+}
+
+.site-footer__credit {
+  margin: 0;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-tertiary);
+  font-size: 13px;
+  letter-spacing: 0.03em;
+}
+
+.site-footer__link {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.site-footer__link:hover,
+.site-footer__link:focus-visible {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
 .workspace-toolbar {
   position: sticky;
   top: 0;
