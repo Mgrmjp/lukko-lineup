@@ -255,7 +255,7 @@
   {
     "id": "lukko-aapo-vanninen",
     "name": "Aapo Vanninen",
-    "number": null,
+    "number": 29,
     "position": "KH",
     "actual_position": "KH",
     "handedness": "L",
@@ -266,7 +266,7 @@
   {
     "id": "lukko-heikki-liedes",
     "name": "Heikki Liedes",
-    "number": null,
+    "number": 39,
     "position": "LH",
     "actual_position": "LH",
     "handedness": "L",
