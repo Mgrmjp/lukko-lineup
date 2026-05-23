@@ -47,6 +47,7 @@ const helpSections = [
       'L-pelaaja: usein vasen laituri tai vasen pakki.',
       'R-pelaaja: usein oikea laituri tai oikea pakki.',
       'Sentteri: laukaisupuolella vähemmän painoarvoa; keskeistä ovat aloitukset, pelinluku ja puolustusvastuu.',
+      'Ottelukokoonpanossa voi olla enintään 19 kenttäpelaajaa, joten valitse ensin 13F- tai 7D-lukitus ennen lisäpaikan täyttämistä.',
     ],
   },
   {
@@ -265,10 +266,12 @@ function setSlotValue(roster, target, playerId) {
   if (target.kind === 'forward') roster.forwards[target.index][target.slot] = playerId
   else if (target.kind === 'defense') roster.defense[target.index][target.slot] = playerId
   else if (target.kind === 'extraForward') {
+    roster.extras.mode = 'forward'
     roster.extras.forward = playerId
     roster.extras.defense = null
   }
   else if (target.kind === 'extraDefense') {
+    roster.extras.mode = 'defense'
     roster.extras.defense = playerId
     roster.extras.forward = null
   }
@@ -296,6 +299,25 @@ function handleClearAll(kind) {
       if (typeof unit[slot] === 'string') unit[slot] = null
     }
   }
+}
+
+function handleLockedSlot(reason) {
+  if (reason) addToast(reason, 'warning')
+}
+
+function handleSetExtraMode(mode) {
+  if (mode === roster.extras.mode) return
+
+  if (mode === 'forward' && roster.extras.defense) {
+    clearSlot(roster, { kind: 'extraDefense', slot: 'extraDefense' })
+  }
+
+  if (mode === 'defense' && roster.extras.forward) {
+    clearSlot(roster, { kind: 'extraForward', slot: 'extraForward' })
+  }
+
+  roster.extras.mode = mode
+  selectedPlayerId = null
 }
 
 function openPicker(target) {
@@ -448,7 +470,7 @@ async function copyShareUrl() {
     <section class="workspace" aria-label="Ketjut">
       <div class="workspace-toolbar">
         <div>
-          <h2>Kokoonpano · {summary.lineupCount} / {summary.limit} sijoitettuna · {summary.free} vapaata</h2>
+          <h2>Kokoonpano · {summary.skaters} / {summary.skaterLimit} kenttäpelaajaa · {summary.goalies} / {summary.goalieLimit} MV</h2>
         </div>
         <div class="view-toggle" aria-label="Valitse näkymä">
           <button class:active={viewMode === 'evenStrength'} type="button" onclick={() => viewMode = 'evenStrength'}>Tasavoima</button>
@@ -465,6 +487,8 @@ async function copyShareUrl() {
         onClear={handleClear}
         onPickSlot={handlePickSlot}
         onOpenPicker={openPicker}
+        onLocked={handleLockedSlot}
+        onSetExtraMode={handleSetExtraMode}
         onClearAll={handleClearAll}
       />
     </section>

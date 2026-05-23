@@ -1,7 +1,9 @@
 // @ts-check
 import lukkoPlayers from './lukko_roster.json'
 
-export const ROSTER_LIMIT = 22
+export const SKATER_LIMIT = 19
+export const GOALIE_LIMIT = 2
+export const ROSTER_LIMIT = SKATER_LIMIT + GOALIE_LIMIT
 export const CURRENT_CONTRACT_YEAR = 2026
 
 export const SLOT_LABELS = {
@@ -164,6 +166,31 @@ function applyDefaultUnit(unit, defaults, eligibleIds) {
   }
 }
 
+function normalizeExtras(extras = {}) {
+  const forward = extras.forward || null
+  const defense = extras.defense || null
+  const mode = extras.mode === 'defense' || (!extras.mode && defense && !forward) ? 'defense' : 'forward'
+
+  if (mode === 'defense') {
+    return { mode, forward: null, defense }
+  }
+
+  return { mode, forward, defense: null }
+}
+
+function setExtraSkater(roster, kind, playerId) {
+  if (kind === 'forward') {
+    roster.extras.mode = 'forward'
+    roster.extras.forward = playerId
+    roster.extras.defense = null
+    return
+  }
+
+  roster.extras.mode = 'defense'
+  roster.extras.forward = null
+  roster.extras.defense = playerId
+}
+
 export function getLukkoPlayers() {
   return getContractedActivePlayers(lukkoPlayers.map(normalizePlayer))
 }
@@ -201,10 +228,7 @@ export function createEmptyRoster() {
       toi: pair === 1 ? 21 : pair === 3 ? 14 : 18,
       role: 'even-strength',
     })),
-    extras: {
-      forward: null,
-      defense: null,
-    },
+    extras: normalizeExtras(),
     goalies: [null, null],
     powerplay: createPowerplayUnits(),
     shorthanded: createShorthandedUnits(),
@@ -233,10 +257,7 @@ export function hydrateRoster(value) {
   }
 
   if (value.extras && typeof value.extras === 'object') {
-    roster.extras = {
-      forward: value.extras.forward || null,
-      defense: value.extras.defense || null,
-    }
+    roster.extras = normalizeExtras(value.extras)
   }
 
   if (Array.isArray(value.goalies)) {
@@ -288,11 +309,13 @@ export function createDefaultRoster(players = getLukkoPlayers()) {
     availableIds.has(playerId) ? playerId : null
   )
 
-  roster.extras.forward = availableIds.has(DEFAULT_ROSTER_IDS.extras.forward)
-    ? DEFAULT_ROSTER_IDS.extras.forward
+  const defaultExtras = normalizeExtras(DEFAULT_ROSTER_IDS.extras)
+
+  roster.extras.forward = availableIds.has(defaultExtras.forward)
+    ? defaultExtras.forward
     : null
-  roster.extras.defense = availableIds.has(DEFAULT_ROSTER_IDS.extras.defense)
-    ? DEFAULT_ROSTER_IDS.extras.defense
+  roster.extras.defense = availableIds.has(defaultExtras.defense)
+    ? defaultExtras.defense
     : null
 
   const specialTeamsEligibleIds = getActiveLineupPlayerIds(roster)
@@ -475,6 +498,18 @@ export function removePlayerFromRoster(roster, playerId) {
   roster.scratches = (roster.scratches || []).filter((id) => id !== playerId)
 }
 
+function getExtraSlotLockReason(roster, target) {
+  if (target.kind === 'extraForward' && roster.extras.mode === 'defense') {
+    return '7D-järjestelmä on lukittu käyttöön. Vaihda 13F-järjestelmään ennen 13. hyökkääjän valintaa.'
+  }
+
+  if (target.kind === 'extraDefense' && roster.extras.mode === 'forward') {
+    return '13F-järjestelmä on lukittu käyttöön. Vaihda 7D-järjestelmään ennen 7. puolustajan valintaa.'
+  }
+
+  return ''
+}
+
 export function assignPlayerToSlot(roster, players, playerId, target) {
   const player = getPlayerById(players, playerId)
   const validation = canAssignPlayerToSlot(player, target.slot)
@@ -493,6 +528,11 @@ export function assignPlayerToSlot(roster, players, playerId, target) {
     return { ok: true, reason: '' }
   }
 
+  const extraSlotLockReason = getExtraSlotLockReason(roster, target)
+  if (extraSlotLockReason) {
+    return { ok: false, reason: extraSlotLockReason }
+  }
+
   removePlayerFromRoster(roster, playerId)
 
   if (target.kind === 'forward') {
@@ -500,9 +540,9 @@ export function assignPlayerToSlot(roster, players, playerId, target) {
   } else if (target.kind === 'defense') {
     roster.defense[target.index][target.slot] = playerId
   } else if (target.kind === 'extraForward') {
-    roster.extras.forward = playerId
+    setExtraSkater(roster, 'forward', playerId)
   } else if (target.kind === 'extraDefense') {
-    roster.extras.defense = playerId
+    setExtraSkater(roster, 'defense', playerId)
   } else if (target.kind === 'goalie') {
     roster.goalies[target.index] = playerId
   } else if (target.kind === 'scratch') {
@@ -561,8 +601,9 @@ export function getActiveLineupPlayers(players, roster, position = null) {
 }
 
 export function summarizeRoster(players, roster, limit = ROSTER_LIMIT) {
-  const assigned = getAssignedPlayerIds(roster)
-  const lineupCount = assigned.size - (roster.scratches?.length || 0)
+  const lineupCount = getActiveLineupPlayerIds(roster).size
+  const goalies = roster.goalies.filter(Boolean).length
+  const skaters = lineupCount - goalies
 
   return {
     filled: lineupCount,
@@ -570,6 +611,10 @@ export function summarizeRoster(players, roster, limit = ROSTER_LIMIT) {
     free: Math.max(limit - lineupCount, 0),
     over: Math.max(lineupCount - limit, 0),
     lineupCount,
+    skaters,
+    skaterLimit: SKATER_LIMIT,
+    goalies,
+    goalieLimit: GOALIE_LIMIT,
   }
 }
 

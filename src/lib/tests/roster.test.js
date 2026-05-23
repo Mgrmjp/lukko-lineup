@@ -83,12 +83,12 @@ describe('roster rules', () => {
     expect(roster.forwards[2]).toMatchObject({
       lw: 'lukko-antti-saarela',
       c: 'lukko-jami-krannila',
-      rw: 'lukko-lenni-hamalainen',
+      rw: 'lukko-topias-haapanen',
     })
     expect(roster.forwards[3]).toMatchObject({
       lw: 'lukko-henri-ikonen',
       c: 'lukko-aapo-vanninen',
-      rw: 'lukko-topias-haapanen',
+      rw: 'lukko-lenni-hamalainen',
     })
     expect(roster.defense[0]).toMatchObject({
       ld: 'lukko-peetro-seppala',
@@ -103,27 +103,28 @@ describe('roster rules', () => {
       rd: 'lukko-anton-olsson',
     })
     expect(roster.extras).toEqual({
+      mode: 'forward',
       forward: 'lukko-jasu-mensonen',
-      defense: 'lukko-jakub-floris',
+      defense: null,
     })
     expect(roster.goalies).toEqual(['lukko-antti-raanta', 'lukko-daniel-salonen'])
     expect(roster.powerplay[0]).toMatchObject({
       ppLeft: 'lukko-alex-beaucage',
       ppCenter: 'lukko-mikael-ruohomaa',
       ppRight: 'lukko-aleksi-saarela',
-      ppLd: 'lukko-peetro-seppala',
+      ppLd: 'lukko-jakob-stenqvist',
       ppRd: 'lukko-antti-saarela',
     })
     expect(roster.powerplay[1]).toMatchObject({
       ppLeft: 'lukko-jami-krannila',
       ppCenter: 'lukko-santeri-virtanen',
       ppRight: 'lukko-felix-robert',
-      ppLd: 'lukko-jakob-stenqvist',
+      ppLd: 'lukko-peetro-seppala',
       ppRd: 'lukko-heikki-liedes',
     })
     expect(roster.shorthanded[0]).toMatchObject({
       pkF1: 'lukko-mikael-ruohomaa',
-      pkF2: 'lukko-heikki-liedes',
+      pkF2: 'lukko-topias-haapanen',
       pkD1: 'lukko-chris-harpur',
       pkD2: 'lukko-nuutti-viitasalo',
     })
@@ -133,7 +134,7 @@ describe('roster rules', () => {
       pkD1: 'lukko-peetro-seppala',
       pkD2: 'lukko-anton-olsson',
     })
-    expect(roster.scratches).toEqual(['lukko-jirko-tukiainen', 'lukko-leo-tuuva', 'lukko-daniil-trakht'])
+    expect(roster.scratches).toEqual(['lukko-jirko-tukiainen', 'lukko-leo-tuuva', 'lukko-daniil-trakht', 'lukko-jakub-floris'])
   })
 
   it('blocks injured and loaned players from active lineup slots', () => {
@@ -172,6 +173,22 @@ describe('roster rules', () => {
     expect(roster.powerplay[0].ppLeft).toBe('w1')
   })
 
+  it('locks extra skater slots based on the selected mode', () => {
+    const roster = createEmptyRoster()
+
+    roster.extras.mode = 'defense'
+    const lockedForward = assignPlayerToSlot(roster, players, 'w1', { kind: 'extraForward', slot: 'extraForward' })
+    const result = assignPlayerToSlot(roster, players, 'd1', { kind: 'extraDefense', slot: 'extraDefense' })
+
+    expect(lockedForward).toMatchObject({ ok: false })
+    expect(result).toMatchObject({ ok: true })
+    expect(roster.extras).toEqual({
+      mode: 'defense',
+      forward: null,
+      defense: 'd1',
+    })
+  })
+
   it('blocks special teams assignments for players outside the active lineup', () => {
     const roster = createEmptyRoster()
 
@@ -184,28 +201,41 @@ describe('roster rules', () => {
     const hydrated = hydrateRoster({
       forwards: [{ lw: 'w1', c: 'c1', rw: null }],
       defense: [{ ld: 'd1', rd: null }],
+      extras: { forward: 'w1', defense: 'd1' },
       goalies: ['g1', null],
     })
 
-    expect(hydrated.extras).toEqual({ forward: null, defense: null })
+    expect(hydrated.extras).toEqual({ mode: 'forward', forward: 'w1', defense: null })
     expect(hydrated.powerplay).toHaveLength(2)
     expect(hydrated.shorthanded).toHaveLength(2)
     expect(hydrated.forwards[0]).toMatchObject({ lw: 'w1', c: 'c1' })
     expect(hydrated.goalies[0]).toBe('g1')
   })
 
-  it('counts only active contracted assigned players against the roster limit', () => {
+  it('infers 7D mode from older saves that only contain the extra defender slot', () => {
+    const hydrated = hydrateRoster({
+      extras: { defense: 'd1' },
+    })
+
+    expect(hydrated.extras).toEqual({ mode: 'defense', forward: null, defense: 'd1' })
+  })
+
+  it('summarizes gameday skaters and goalies separately', () => {
     const roster = createEmptyRoster()
-    roster.scratches = ['w1', 'd1', 'i1', 'l1', 'u1']
+    assignPlayerToSlot(roster, players, 'w1', { kind: 'forward', index: 0, slot: 'lw' })
+    assignPlayerToSlot(roster, players, 'c1', { kind: 'forward', index: 0, slot: 'c' })
+    assignPlayerToSlot(roster, players, 'd1', { kind: 'defense', index: 0, slot: 'ld' })
+    assignPlayerToSlot(roster, players, 'g1', { kind: 'goalie', index: 0, slot: 'goalie' })
+    roster.scratches = ['u1']
 
-    const contractedPlayers = players.map((player) =>
-      ['w1', 'd1'].includes(player.id) ? { ...player, contract_year: 2027 } : player
-    )
-
-    expect(summarizeRoster(contractedPlayers, roster, 3)).toMatchObject({
-      filled: 2,
-      free: 1,
-      lineupCount: 5,
+    expect(summarizeRoster(players, roster)).toMatchObject({
+      filled: 4,
+      free: 17,
+      lineupCount: 4,
+      skaters: 3,
+      skaterLimit: 19,
+      goalies: 1,
+      goalieLimit: 2,
     })
   })
 })

@@ -9,8 +9,11 @@ const {
   onClear = () => {},
   onPickSlot = () => {},
   onOpenPicker = () => {},
+  onLocked = () => {},
   compact = false,
   isKey = false,
+  locked = false,
+  lockReason = '',
 } = $props()
 const numberLabel = $derived(player?.number === null || player?.number === undefined ? '' : `${player.number}`)
 const positionTone = $derived(getPositionTone(player?.actual_position, target.slot))
@@ -42,6 +45,7 @@ function getPositionTone(position, slot) {
 }
 
 function handleDragEnter(event) {
+  if (locked) return
   event.preventDefault()
   dragCounter++
 }
@@ -51,6 +55,10 @@ function handleDragLeave(event) {
 }
 
 function handleDragOver(event) {
+  if (locked) {
+    event.dataTransfer.dropEffect = 'none'
+    return
+  }
   event.preventDefault()
   event.dataTransfer.dropEffect = 'move'
 }
@@ -68,12 +76,17 @@ function handleDragEnd() {
 function handleDrop(event) {
   event.preventDefault()
   dragCounter = 0
+  if (locked) {
+    onLocked(lockReason || `${label} on lukittu.`)
+    return
+  }
   const playerId = event.dataTransfer.getData('text/plain')
   if (playerId) onDropPlayer(playerId, target)
 }
 
 function handleClick() {
-  if (selectedPlayerId) onPickSlot(target)
+  if (locked) onLocked(lockReason || `${label} on lukittu.`)
+  else if (selectedPlayerId) onPickSlot(target)
   else if (!player) onOpenPicker(target)
 }
 </script>
@@ -83,19 +96,21 @@ function handleClick() {
     <div
       class:is-over={isOver}
       class:filled={player}
-      class:clickable={selectedPlayerId}
+      class:clickable={selectedPlayerId && !locked}
+      class:locked={locked}
       class:mismatch={positionMismatch}
       class:is-key={isKey && player}
       class="tactic-card"
       role="button"
       tabindex="0"
-      draggable={!!player}
-      aria-label={player ? `${label}: ${player.name}` : `${label}: tyhjä paikka`}
+      draggable={!!player && !locked}
+      aria-label={player ? `${label}: ${player.name}` : locked ? `${label}: lukittu paikka` : `${label}: tyhjä paikka`}
+      aria-disabled={locked}
       onclick={handleClick}
       onkeydown={(event) => {
-        if ((event.key === 'Enter' || event.key === ' ') && selectedPlayerId) {
+        if ((event.key === 'Enter' || event.key === ' ') && (selectedPlayerId || locked)) {
           event.preventDefault()
-          onPickSlot(target)
+          handleClick()
         }
       }}
       ondragstart={handleDragStart}
@@ -125,6 +140,12 @@ function handleClick() {
         >
           <span aria-hidden="true"></span>
         </button>
+      {:else if locked}
+        <div class="tactic-card__empty-graphic">
+          <div class="line-slot__lock-icon" aria-hidden="true"></div>
+          <div class="tactic-card__label">Lukittu</div>
+          <div class="tactic-card__empty-add">{lockReason}</div>
+        </div>
       {:else}
         <div class="tactic-card__empty-graphic">
           <svg class="jersey-silhouette jersey-silhouette--sm" viewBox="0 0 36 44" fill="none" aria-hidden="true">
@@ -143,17 +164,19 @@ function handleClick() {
   <div
     class:is-over={isOver}
     class:filled={player}
-    class:clickable={selectedPlayerId}
+    class:clickable={selectedPlayerId && !locked}
+    class:locked={locked}
     class={`line-slot ${positionTone}`}
     role="button"
     tabindex="0"
-    draggable={!!player}
-    aria-label={player ? `${label}: ${player.name}` : `${label}: tyhjä paikka`}
+    draggable={!!player && !locked}
+    aria-label={player ? `${label}: ${player.name}` : locked ? `${label}: lukittu paikka` : `${label}: tyhjä paikka`}
+    aria-disabled={locked}
     onclick={handleClick}
     onkeydown={(event) => {
-      if ((event.key === 'Enter' || event.key === ' ') && selectedPlayerId) {
+      if ((event.key === 'Enter' || event.key === ' ') && (selectedPlayerId || locked)) {
         event.preventDefault()
-        onPickSlot(target)
+        handleClick()
       }
     }}
     ondragstart={handleDragStart}
@@ -194,6 +217,12 @@ function handleClick() {
             <span>{contractYear}</span>
           </div>
         </div>
+      </div>
+    {:else if locked}
+      <div class="line-slot__empty-graphic line-slot__empty-graphic--locked">
+        <div class="line-slot__lock-icon" aria-hidden="true"></div>
+        <div class="line-slot__empty-label">Lukittu</div>
+        <div class="line-slot__lock-copy">{lockReason}</div>
       </div>
     {:else}
       <div class="line-slot__empty-graphic">

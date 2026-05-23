@@ -11,11 +11,31 @@ const {
   onClear = () => {},
   onPickSlot = () => {},
   onOpenPicker = () => {},
+  onLocked = () => {},
+  onSetExtraMode = () => {},
   onClearAll = () => {},
 } = $props()
 
 function player(playerId) {
   return getPlayerById(players, playerId)
+}
+
+function isExtraLocked(kind) {
+  if (kind === 'forward') return roster.extras.mode !== 'forward'
+  if (kind === 'defense') return roster.extras.mode !== 'defense'
+  return false
+}
+
+function extraLockReason(kind) {
+  if (kind === 'forward' && roster.extras.mode === 'defense') {
+    return '7D-järjestelmä on lukittu käyttöön. Vaihda 13F-järjestelmään ennen 13. hyökkääjän valintaa.'
+  }
+
+  if (kind === 'defense' && roster.extras.mode === 'forward') {
+    return '13F-järjestelmä on lukittu käyttöön. Vaihda 7D-järjestelmään ennen 7. puolustajan valintaa.'
+  }
+
+  return ''
 }
 </script>
 
@@ -65,34 +85,62 @@ function player(playerId) {
 
   <section class="line-section lineup-panel">
     <div class="line-section__header">
-      <h2>Lisäpaikat</h2>
+      <h2>19. kenttäpelaaja</h2>
+      <div class="extras-mode-toggle" aria-label="Valitse 13F tai 7D">
+        <button
+          type="button"
+          class:active={roster.extras.mode === 'forward'}
+          onclick={() => onSetExtraMode('forward')}
+        >13F</button>
+        <button
+          type="button"
+          class:active={roster.extras.mode === 'defense'}
+          onclick={() => onSetExtraMode('defense')}
+        >7D</button>
+      </div>
     </div>
     <article class="line-row extras-row">
       <div class="extras-row__title">
         <strong>13. hyökkääjä</strong>
+        {#if isExtraLocked('forward')}
+          <span class="extras-row__status">Lukittu</span>
+        {:else}
+          <span class="extras-row__status extras-row__status--active">Aktiivinen</span>
+        {/if}
       </div>
       <LineSlot
         label="13. hyökkääjä"
         player={player(roster.extras.forward)}
         target={{ kind: 'extraForward', slot: 'extraForward' }}
+        locked={isExtraLocked('forward')}
+        lockReason={extraLockReason('forward')}
         {selectedPlayerId}
         {onDropPlayer}
         {onClear}
         {onPickSlot}
         {onOpenPicker}
+        {onLocked}
       />
       <div class="extras-row__title">
         <strong>7. puolustaja</strong>
+        {#if isExtraLocked('defense')}
+          <span class="extras-row__status">Lukittu</span>
+        {:else}
+          <span class="extras-row__status extras-row__status--active">Aktiivinen</span>
+        {/if}
       </div>
       <LineSlot
         label="7. puolustaja"
         player={player(roster.extras.defense)}
         target={{ kind: 'extraDefense', slot: 'extraDefense' }}
+        locked={isExtraLocked('defense')}
+        lockReason={extraLockReason('defense')}
         {selectedPlayerId}
         {onDropPlayer}
         {onClear}
         {onPickSlot}
         {onOpenPicker}
+        {onLocked}
       />
     </article>
   </section>
