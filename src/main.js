@@ -7,6 +7,8 @@ if (!target) {
   throw new Error('App root element was not found.')
 }
 
+target.replaceChildren()
+
 const app = mount(App, {
   target,
 })
