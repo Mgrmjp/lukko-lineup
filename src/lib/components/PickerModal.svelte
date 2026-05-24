@@ -136,4 +136,23 @@ function handlePlayerSelect(playerId) {
 .picker-content :global(.roster-card__main) {
   min-width: 0;
 }
+
+@media (max-width: 520px) {
+  .picker-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .picker-panel {
+    width: 100%;
+    max-height: min(88vh, 720px);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .picker-content {
+    grid-template-columns: 1fr;
+    padding: 10px;
+    gap: 8px;
+  }
+}
 </style>

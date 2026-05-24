@@ -187,6 +187,7 @@ function handleClick() {
     ondrop={handleDrop}
   >
     {#if player}
+      <div class="line-slot__position-tag">{label}</div>
       <div class="line-slot__info">
         <div class="line-slot__header">
           <span class="line-slot__number" data-number={numberLabel || '—'}>{numberLabel || '—'}</span>
