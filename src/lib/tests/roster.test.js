@@ -5,6 +5,8 @@ import {
   canAssignPlayerToSlot,
   createDefaultRoster,
   createEmptyRoster,
+  decodeRoster,
+  encodeRoster,
   getAvailablePlayers,
   getContractedActivePlayers,
   hydrateRoster,
@@ -203,7 +205,7 @@ describe('roster rules', () => {
       defense: [{ ld: 'd1', rd: null }],
       extras: { forward: 'w1', defense: 'd1' },
       goalies: ['g1', null],
-    })
+    }, players)
 
     expect(hydrated.extras).toEqual({ mode: 'forward', forward: 'w1', defense: null })
     expect(hydrated.powerplay).toHaveLength(2)
@@ -215,9 +217,35 @@ describe('roster rules', () => {
   it('infers 7D mode from older saves that only contain the extra defender slot', () => {
     const hydrated = hydrateRoster({
       extras: { defense: 'd1' },
-    })
+    }, players)
 
     expect(hydrated.extras).toEqual({ mode: 'defense', forward: null, defense: 'd1' })
+  })
+
+  it('drops unknown and position-invalid player ids while hydrating shared data', () => {
+    const hydrated = hydrateRoster({
+      forwards: [{ lw: 'w1', c: 'ghost-player', rw: '<script>' }],
+      defense: [{ ld: 'c1', rd: 'd1' }],
+      extras: { mode: 'defense', forward: 'w1', defense: 'ghost-player' },
+      goalies: ['w1', 'g1'],
+      powerplay: [{ ppLeft: 'w1', ppCenter: 'c1', ppRight: 'ghost-player' }],
+      scratches: ['c1', 'ghost-player', 'c1'],
+    }, players)
+
+    expect(hydrated.forwards[0]).toMatchObject({ lw: 'w1', c: null, rw: null })
+    expect(hydrated.defense[0]).toMatchObject({ ld: null, rd: 'd1' })
+    expect(hydrated.extras).toEqual({ mode: 'defense', forward: null, defense: null })
+    expect(hydrated.goalies).toEqual([null, 'g1'])
+    expect(hydrated.powerplay[0]).toMatchObject({ ppLeft: 'w1', ppCenter: null, ppRight: null })
+    expect(hydrated.scratches).toEqual(['c1'])
+  })
+
+  it('decodes only bounded roster payloads', () => {
+    const roster = createEmptyRoster()
+    assignPlayerToSlot(roster, players, 'w1', { kind: 'forward', index: 0, slot: 'lw' })
+
+    expect(decodeRoster(encodeRoster(roster), players)?.forwards[0].lw).toBe('w1')
+    expect(decodeRoster('x'.repeat(12001), players)).toBeNull()
   })
 
   it('summarizes gameday skaters and goalies separately', () => {

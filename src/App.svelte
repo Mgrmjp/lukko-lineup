@@ -21,11 +21,18 @@ import {
   getPlayerById,
   hydrateRoster,
   getLukkoPlayers,
+  MAX_ENCODED_ROSTER_LENGTH,
   removePlayerFromSpecialTeams,
   summarizeRoster,
 } from './lib/data/roster.js'
 
 const players = getLukkoPlayers()
+const STORAGE_KEYS = {
+  roster: 'lukko-line-builder',
+  viewMode: 'lukko-view-mode',
+}
+const VIEW_MODES = new Set(['evenStrength', 'specialTeams'])
+const MAX_STORED_ROSTER_LENGTH = 20000
 const helpSections = [
   {
     title: 'Käyttö',
@@ -65,9 +72,10 @@ const helpNote = 'Huomioithan, että ketjukemia ja erikoistilanneroolit voivat m
 let roster = $state(createDefaultRoster(players))
 let selectedPlayerId = $state(null)
 let helpOpen = $state(false)
-let viewMode = $state(localStorage.getItem('lukko-view-mode') || 'evenStrength')
+let viewMode = $state(readSavedViewMode())
 let pickerTarget = $state(null)
 let positionFilter = $state('all')
+let initialRosterLoaded = false
 
 const POSITIONS = [
   { key: 'all', label: 'Kaikki' },
@@ -80,6 +88,39 @@ const POSITIONS = [
 function filterPlayers(list) {
   if (positionFilter === 'all') return list
   return list.filter((p) => p.actual_position === positionFilter)
+}
+
+function readLocalStorage(key) {
+  try {
+    return localStorage.getItem(key)
+  } catch (_error) {
+    return null
+  }
+}
+
+function writeLocalStorage(key, value) {
+  try {
+    localStorage.setItem(key, value)
+  } catch (_error) {
+    return false
+  }
+  return true
+}
+
+function readSavedViewMode() {
+  const saved = readLocalStorage(STORAGE_KEYS.viewMode)
+  return VIEW_MODES.has(saved) ? saved : 'evenStrength'
+}
+
+function readSavedRoster() {
+  const saved = readLocalStorage(STORAGE_KEYS.roster)
+  if (!saved || saved.length > MAX_STORED_ROSTER_LENGTH) return null
+
+  try {
+    return hydrateRoster(JSON.parse(saved), players)
+  } catch (_error) {
+    return null
+  }
 }
 
 let toasts = $state([])
@@ -113,24 +154,29 @@ const pickerPlayers = $derived(
 )
 
 $effect(() => {
-  document.body.style.overflow = pickerTarget ? 'hidden' : ''
-  return () => { document.body.style.overflow = '' }
+  document.body.classList.toggle('is-picker-open', !!pickerTarget)
+  return () => { document.body.classList.remove('is-picker-open') }
 })
 
 $effect(() => {
+  if (initialRosterLoaded) return
+  initialRosterLoaded = true
+
   const shared = new URLSearchParams(window.location.search).get('roster')
-  const decoded = shared ? decodeRoster(shared) : null
-  const saved = localStorage.getItem('lukko-line-builder')
-  roster = decoded || (saved ? hydrateRoster(JSON.parse(saved)) : roster)
+  const decoded = shared && shared.length <= MAX_ENCODED_ROSTER_LENGTH
+    ? decodeRoster(shared, players)
+    : null
+  const saved = readSavedRoster()
+  roster = decoded || saved || roster
   untrack(() => applyDefaultsToEmptySpecialTeams(roster, players))
 })
 
 $effect(() => {
-  localStorage.setItem('lukko-line-builder', JSON.stringify(roster))
+  writeLocalStorage(STORAGE_KEYS.roster, JSON.stringify(roster))
 })
 
 $effect(() => {
-  localStorage.setItem('lukko-view-mode', viewMode)
+  if (VIEW_MODES.has(viewMode)) writeLocalStorage(STORAGE_KEYS.viewMode, viewMode)
 })
 
 function isPlayerInMainLineup(roster, playerId) {
@@ -349,8 +395,14 @@ function clearRoster() {
 async function copyShareUrl() {
   const url = new URL(window.location.href)
   url.searchParams.set('roster', encodeRoster(roster))
-  await navigator.clipboard?.writeText(url.toString())
-  addToast('Jakolinkki kopioitu leikepöydälle.', 'success')
+
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error('Clipboard API is unavailable.')
+    await navigator.clipboard.writeText(url.toString())
+    addToast('Jakolinkki kopioitu leikepöydälle.', 'success')
+  } catch (_error) {
+    addToast('Jakolinkin kopiointi ei onnistunut.', 'error')
+  }
 }
 </script>
 
@@ -501,7 +553,7 @@ async function copyShareUrl() {
         class="site-footer__link"
         href="https://www.linkedin.com/in/miikkamgr/"
         target="_blank"
-        rel="noreferrer"
+        rel="noopener noreferrer"
         aria-label="Sivun tekijä Miikka LinkedInissä"
       >Miikka</a>
     </p>

@@ -5,6 +5,7 @@ export const SKATER_LIMIT = 19
 export const GOALIE_LIMIT = 2
 export const ROSTER_LIMIT = SKATER_LIMIT + GOALIE_LIMIT
 export const CURRENT_CONTRACT_YEAR = 2026
+export const MAX_ENCODED_ROSTER_LENGTH = 12000
 
 export const SLOT_LABELS = {
   lw: 'VL',
@@ -138,6 +139,40 @@ const FORWARD_SLOTS = ['lw', 'c', 'rw']
 const DEFENSE_SLOTS = ['ld', 'rd']
 const POWERPLAY_SLOTS = ['ppLeft', 'ppCenter', 'ppRight', 'ppLd', 'ppRd']
 const SHORTHANDED_SLOTS = ['pkF1', 'pkF2', 'pkD1', 'pkD2']
+const PLAYER_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,95}$/i
+
+function createHydrationContext(players = getLukkoPlayers()) {
+  const list = Array.isArray(players) ? players : []
+
+  return {
+    allowedIds: new Set(list.map((player) => player.id).filter(Boolean)),
+    playersById: new Map(list.map((player) => [player.id, player])),
+  }
+}
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function sanitizePlayerId(playerId, allowedIds) {
+  if (typeof playerId !== 'string' || !PLAYER_ID_PATTERN.test(playerId)) return null
+  if (allowedIds.size > 0 && !allowedIds.has(playerId)) return null
+  return playerId
+}
+
+function sanitizePlayerIdForSlot(playerId, slot, context) {
+  const sanitized = sanitizePlayerId(playerId, context.allowedIds)
+  if (!sanitized) return null
+
+  const player = context.playersById.get(sanitized)
+  if (player && !canAssignPlayerToSlot(player, slot).ok) return null
+  return sanitized
+}
+
+function sanitizeRosterSlot(source, slot, context) {
+  if (!isPlainObject(source)) return null
+  return sanitizePlayerIdForSlot(source[slot], slot, context)
+}
 
 function createPowerplayUnits() {
   return [1, 2].map((unit) => ({
@@ -166,10 +201,11 @@ function applyDefaultUnit(unit, defaults, eligibleIds) {
   }
 }
 
-function normalizeExtras(extras = {}) {
-  const forward = extras.forward || null
-  const defense = extras.defense || null
-  const mode = extras.mode === 'defense' || (!extras.mode && defense && !forward) ? 'defense' : 'forward'
+function normalizeExtras(extras = {}, context = createHydrationContext([])) {
+  const source = isPlainObject(extras) ? extras : {}
+  const forward = sanitizePlayerIdForSlot(source.forward, 'extraForward', context)
+  const defense = sanitizePlayerIdForSlot(source.defense, 'extraDefense', context)
+  const mode = source.mode === 'defense' || (!source.mode && defense && !forward) ? 'defense' : 'forward'
 
   if (mode === 'defense') {
     return { mode, forward: null, defense }
@@ -236,52 +272,87 @@ export function createEmptyRoster() {
   }
 }
 
-export function hydrateRoster(value) {
+export function hydrateRoster(value, players = getLukkoPlayers()) {
   const roster = createEmptyRoster()
   if (!value || typeof value !== 'object') return roster
+  const context = createHydrationContext(players)
 
   if (Array.isArray(value.forwards)) {
-    roster.forwards = roster.forwards.map((line, index) => ({
-      ...line,
-      ...(value.forwards[index] || {}),
-      line: line.line,
-    }))
+    roster.forwards = roster.forwards.map((line, index) => {
+      const source = value.forwards[index]
+      return {
+        ...line,
+        lw: sanitizeRosterSlot(source, 'lw', context),
+        c: sanitizeRosterSlot(source, 'c', context),
+        rw: sanitizeRosterSlot(source, 'rw', context),
+      }
+    })
   }
 
   if (Array.isArray(value.defense)) {
-    roster.defense = roster.defense.map((pair, index) => ({
-      ...pair,
-      ...(value.defense[index] || {}),
-      pair: pair.pair,
-    }))
+    roster.defense = roster.defense.map((pair, index) => {
+      const source = value.defense[index]
+      return {
+        ...pair,
+        ld: sanitizeRosterSlot(source, 'ld', context),
+        rd: sanitizeRosterSlot(source, 'rd', context),
+      }
+    })
   }
 
-  if (value.extras && typeof value.extras === 'object') {
-    roster.extras = normalizeExtras(value.extras)
+  if (isPlainObject(value.extras)) {
+    roster.extras = normalizeExtras(value.extras, context)
   }
 
   if (Array.isArray(value.goalies)) {
-    roster.goalies = roster.goalies.map((goalieId, index) => value.goalies[index] || goalieId)
+    roster.goalies = roster.goalies.map((goalieId, index) =>
+      sanitizePlayerIdForSlot(value.goalies[index], 'goalie', context) || goalieId
+    )
+  }
+
+  const activeIds = getActiveLineupPlayerIds(roster)
+  const specialTeamsContext = {
+    ...context,
+    allowedIds: context.allowedIds.size > 0
+      ? new Set([...context.allowedIds].filter((playerId) => activeIds.has(playerId)))
+      : activeIds,
   }
 
   if (Array.isArray(value.powerplay)) {
-    roster.powerplay = roster.powerplay.map((unit, index) => ({
-      ...unit,
-      ...(value.powerplay[index] || {}),
-      unit: unit.unit,
-    }))
+    roster.powerplay = roster.powerplay.map((unit, index) => {
+      const source = value.powerplay[index]
+      return {
+        ...unit,
+        ppLeft: sanitizeRosterSlot(source, 'ppLeft', specialTeamsContext),
+        ppCenter: sanitizeRosterSlot(source, 'ppCenter', specialTeamsContext),
+        ppRight: sanitizeRosterSlot(source, 'ppRight', specialTeamsContext),
+        ppLd: sanitizeRosterSlot(source, 'ppLd', specialTeamsContext),
+        ppRd: sanitizeRosterSlot(source, 'ppRd', specialTeamsContext),
+      }
+    })
   }
 
   if (Array.isArray(value.shorthanded)) {
-    roster.shorthanded = roster.shorthanded.map((unit, index) => ({
-      ...unit,
-      ...(value.shorthanded[index] || {}),
-      unit: unit.unit,
-    }))
+    roster.shorthanded = roster.shorthanded.map((unit, index) => {
+      const source = value.shorthanded[index]
+      return {
+        ...unit,
+        pkF1: sanitizeRosterSlot(source, 'pkF1', specialTeamsContext),
+        pkF2: sanitizeRosterSlot(source, 'pkF2', specialTeamsContext),
+        pkD1: sanitizeRosterSlot(source, 'pkD1', specialTeamsContext),
+        pkD2: sanitizeRosterSlot(source, 'pkD2', specialTeamsContext),
+      }
+    })
   }
 
   if (Array.isArray(value.scratches)) {
-    roster.scratches = [...new Set(value.scratches.filter(Boolean))]
+    roster.scratches = [
+      ...new Set(
+        value.scratches
+          .map((playerId) => sanitizePlayerIdForSlot(playerId, 'scratch', context))
+          .filter((playerId) => playerId && !activeIds.has(playerId))
+      ),
+    ].slice(0, context.allowedIds.size || ROSTER_LIMIT)
   }
 
   return roster
@@ -622,9 +693,11 @@ export function encodeRoster(roster) {
   return btoa(encodeURIComponent(JSON.stringify(roster)))
 }
 
-export function decodeRoster(value) {
+export function decodeRoster(value, players = getLukkoPlayers()) {
+  if (typeof value !== 'string' || value.length > MAX_ENCODED_ROSTER_LENGTH) return null
+
   try {
-    return hydrateRoster(JSON.parse(decodeURIComponent(atob(value))))
+    return hydrateRoster(JSON.parse(decodeURIComponent(atob(value))), players)
   } catch (_error) {
     return null
   }
