@@ -131,6 +131,7 @@ function handleClick() {
           class="line-slot__clear tactic-card__clear"
           type="button"
           aria-label={`Poista ${player.name} paikasta ${label}`}
+          data-tooltip="Poista pelaaja"
           onmousedown={(event) => event.stopPropagation()}
           onclick={(event) => {
             event.stopPropagation()
@@ -138,7 +139,13 @@ function handleClick() {
           }}
           ondragstart={(event) => event.preventDefault()}
         >
-          <span aria-hidden="true"></span>
+          <svg class="line-slot__clear-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+            <path d="M7.25 4.75V3.5h5.5v1.25" />
+            <path d="M4.5 6.25h11" />
+            <path d="M6 6.25l.55 9.25c.06.95.85 1.75 1.8 1.75h3.3c.95 0 1.74-.8 1.8-1.75L14 6.25" />
+            <path d="M8.5 9v5.25" />
+            <path d="M11.5 9v5.25" />
+          </svg>
         </button>
       {:else if locked}
         <div class="tactic-card__empty-graphic">
@@ -195,6 +202,7 @@ function handleClick() {
             class="line-slot__clear"
             type="button"
             aria-label={`Poista ${player.name} paikasta ${label}`}
+            data-tooltip="Poista pelaaja"
             onmousedown={(event) => event.stopPropagation()}
             onclick={(event) => {
               event.stopPropagation()
@@ -202,7 +210,13 @@ function handleClick() {
             }}
             ondragstart={(event) => event.preventDefault()}
           >
-            <span aria-hidden="true"></span>
+            <svg class="line-slot__clear-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+              <path d="M7.25 4.75V3.5h5.5v1.25" />
+              <path d="M4.5 6.25h11" />
+              <path d="M6 6.25l.55 9.25c.06.95.85 1.75 1.8 1.75h3.3c.95 0 1.74-.8 1.8-1.75L14 6.25" />
+              <path d="M8.5 9v5.25" />
+              <path d="M11.5 9v5.25" />
+            </svg>
           </button>
         </div>
         <div class="line-slot__bio">
