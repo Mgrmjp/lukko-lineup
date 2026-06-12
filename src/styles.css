@@ -146,6 +146,39 @@
   border: 0;
 }
 
+.seo-info {
+  max-width: 720px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  font-family: var(--font-body, system-ui, -apple-system, sans-serif);
+  color: var(--text-secondary, #94a3b8);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+.seo-info h2 {
+  font-size: 1.125rem;
+  color: var(--text-primary, #f1f5f9);
+  margin: 0 0 0.75rem;
+  font-weight: 600;
+}
+.seo-info h3 {
+  font-size: 1rem;
+  color: var(--text-primary, #f1f5f9);
+  margin: 1rem 0 0.5rem;
+  font-weight: 600;
+}
+.seo-info p {
+  margin: 0.5rem 0;
+}
+.seo-info a {
+  color: var(--accent, #FFD100);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.seo-info a:hover {
+  color: var(--text-primary, #f1f5f9);
+}
+
 body {
   position: relative;
   margin: 0;
